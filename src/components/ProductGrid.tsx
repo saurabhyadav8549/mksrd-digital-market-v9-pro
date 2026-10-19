@@ -37,7 +37,7 @@ export function ProductGrid() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <span className="inline-flex items-center gap-1 rounded-full bg-brand-accent px-2.5 py-0.5 text-[11px] font-extrabold uppercase text-green-950 mb-2">
-              <Sparkles className="h-3 w-3" /> 0% Image Mismatch Guarantee
+              <Sparkles className="h-3 w-3" /> Direct From Mandi
             </span>
             <h2 className="text-xl sm:text-2xl font-black tracking-tight">
               Farm-Fresh Mandi Produce at Wholesale Rates!
