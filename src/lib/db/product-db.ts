@@ -1,36 +1,22 @@
 import { createClient } from "@supabase/supabase-js";
 import { SEED_PRODUCTS } from "@/lib/data/seed-products";
 import type { Product, ProductPatch, OrderRecord, OrderStatus, UserProfile } from "@/lib/types";
-import { mkdir, readFile, writeFile } from "fs/promises";
-import { ORDERS_FILE, USERS_FILE, RUNTIME_DIR } from "@/lib/db/paths";
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// --- PRODUCTS (Supabase Cloud Database Connected with Auto-Seed) ---
+// --- 1. PRODUCTS ---
 export async function getProducts(): Promise<Product[]> {
   try {
     const { data: dbProducts, error } = await supabase.from("products").select("*");
     
-    if (error) {
-      console.error("Supabase fetch error:", error.message);
+    if (error || !dbProducts || dbProducts.length === 0) {
       return SEED_PRODUCTS.map((item) => ({ ...item }));
     }
 
-    // Agar table khali hai, toh saare 45 SEED_PRODUCTS apne aap insert ho jayenge!
-    if (!dbProducts || dbProducts.length === 0) {
-      const seedPayload = SEED_PRODUCTS.map(p => ({
-        id: p.id,
-        price_per_kg: p.price_per_kg,
-        in_stock: p.in_stock
-      }));
-      await supabase.from("products").upsert(seedPayload);
-      return SEED_PRODUCTS.map((item) => ({ ...item }));
-    }
-
-    const dbMap = new Map((dbProducts || []).map((p: any) => [p.id, p]));
+    const dbMap = new Map(dbProducts.map((p: any) => [p.id, p]));
 
     return SEED_PRODUCTS.map((seedItem) => {
       const existing: any = dbMap.get(seedItem.id);
@@ -44,7 +30,7 @@ export async function getProducts(): Promise<Product[]> {
       return { ...seedItem };
     });
   } catch (err) {
-    console.error("Error getting products from Supabase:", err);
+    console.error("Error getting products:", err);
     return SEED_PRODUCTS.map((item) => ({ ...item }));
   }
 }
@@ -65,7 +51,6 @@ export async function updateProduct(
     next.in_stock = patch.in_stock;
   }
 
-  // Direct Update / Upsert in Supabase Table
   const { error } = await supabase
     .from("products")
     .upsert({
@@ -82,104 +67,142 @@ export async function updateProduct(
   return { ...next };
 }
 
-// --- USERS & ORDERS (File-system fallback) ---
-let persistChain = Promise.resolve();
-
-async function persistFiles(orders: OrderRecord[], users: UserProfile[]) {
-  persistChain = persistChain.then(async () => {
-    try {
-      await mkdir(RUNTIME_DIR, { recursive: true });
-      await writeFile(ORDERS_FILE, JSON.stringify(orders, null, 2), "utf8");
-      await writeFile(USERS_FILE, JSON.stringify(users, null, 2), "utf8");
-    } catch (err) {
-      console.error("Runtime persistence warning:", err);
-    }
-  });
-  await persistChain;
-}
-
+// --- 2. USERS (Supabase Connected via Mobile Number) ---
 export async function getUsers(): Promise<UserProfile[]> {
-  await mkdir(RUNTIME_DIR, { recursive: true });
   try {
-    const raw = await readFile(USERS_FILE, "utf8");
-    return JSON.parse(raw) as UserProfile[];
-  } catch {
+    const { data, error } = await supabase.from("users").select("*");
+    if (error) throw error;
+    return (data || []).map((u: any) => ({
+      phone: u.phone,
+      name: u.name,
+      address: u.address,
+      created_at: u.created_at,
+    }));
+  } catch (err) {
+    console.error("Error fetching users:", err);
     return [];
   }
 }
 
 export async function getUserByPhone(phone: string): Promise<UserProfile | null> {
   const cleanPhone = phone.replace(/\D/g, "").slice(-10);
-  const users = await getUsers();
-  const found = users.find((u) => u.phone === cleanPhone);
-  return found ? { ...found } : null;
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("phone", cleanPhone)
+      .single();
+
+    if (error || !data) return null;
+    return {
+      phone: data.phone,
+      name: data.name,
+      address: data.address,
+      created_at: data.created_at,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function saveUserProfile(profile: { phone: string; name: string; address: string }): Promise<UserProfile> {
   const cleanPhone = profile.phone.replace(/\D/g, "").slice(-10);
-  const users = await getUsers();
-  const existingIdx = users.findIndex((u) => u.phone === cleanPhone);
+  const existingUser = await getUserByPhone(cleanPhone);
 
   const record: UserProfile = {
     phone: cleanPhone,
     name: profile.name.trim(),
     address: profile.address.trim(),
-    created_at: existingIdx > -1 ? users[existingIdx].created_at : new Date().toISOString(),
+    created_at: existingUser ? existingUser.created_at : new Date().toISOString(),
   };
 
-  if (existingIdx > -1) {
-    users[existingIdx] = record;
-  } else {
-    users.push(record);
+  const { error } = await supabase.from("users").upsert(record);
+  if (error) {
+    console.error("Error saving user profile:", error.message);
   }
 
-  await persistFiles(await getOrders(), users);
-  return { ...record };
+  return record;
 }
 
+// --- 3. ORDERS (Supabase Connected) ---
 export async function getOrders(): Promise<OrderRecord[]> {
-  await mkdir(RUNTIME_DIR, { recursive: true });
   try {
-    const raw = await readFile(ORDERS_FILE, "utf8");
-    return JSON.parse(raw) as OrderRecord[];
-  } catch {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*")
+      .order("order_date", { ascending: false });
+
+    if (error) throw error;
+    return (data || []).map((o: any) => ({
+      receipt_id: o.receipt_id,
+      customer_phone: o.customer_phone,
+      customer_name: o.customer_name,
+      customer_address: o.customer_address,
+      items: typeof o.items === "string" ? JSON.parse(o.items) : o.items,
+      total_amount: Number(o.total_amount),
+      status: o.status as OrderStatus,
+      order_date: o.order_date,
+    }));
+  } catch (err) {
+    console.error("Error fetching orders:", err);
     return [];
   }
 }
 
 export async function createOrder(order: OrderRecord): Promise<OrderRecord> {
-  const orders = await getOrders();
   const cleanPhone = order.customer_phone.replace(/\D/g, "").slice(-10);
   const normalizedOrder: OrderRecord = {
     ...order,
     customer_phone: cleanPhone,
     order_date: order.order_date || new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
   };
-  orders.unshift(normalizedOrder);
 
+  // Save to Supabase orders table
+  const { error } = await supabase.from("orders").insert({
+    receipt_id: normalizedOrder.receipt_id,
+    customer_phone: normalizedOrder.customer_phone,
+    customer_name: normalizedOrder.customer_name,
+    customer_address: normalizedOrder.customer_address,
+    items: normalizedOrder.items,
+    total_amount: normalizedOrder.total_amount,
+    status: normalizedOrder.status,
+    order_date: normalizedOrder.order_date,
+  });
+
+  if (error) {
+    console.error("Error creating order in Supabase:", error.message);
+  }
+
+  // Also save/update user profile automatically using unique mobile number
   if (cleanPhone.length === 10 && order.customer_name && order.customer_address) {
     await saveUserProfile({
       phone: cleanPhone,
       name: order.customer_name,
       address: order.customer_address,
     });
-  } else {
-    await persistFiles(orders, await getUsers());
   }
 
-  return { ...normalizedOrder };
+  return normalizedOrder;
 }
 
 export async function updateOrderStatus(
   receiptId: string,
   status: OrderStatus
 ): Promise<OrderRecord | null> {
-  const orders = await getOrders();
-  const index = orders.findIndex((o) => o.receipt_id === receiptId);
-  if (index === -1) return null;
+  try {
+    const { error } = await supabase
+      .from("orders")
+      .update({ status })
+      .eq("receipt_id", receiptId);
 
-  orders[index].status = status;
-  await persistFiles(orders, await getUsers());
-  return { ...orders[index] };
+    if (error) throw error;
+
+    const orders = await getOrders();
+    const updated = orders.find((o) => o.receipt_id === receiptId);
+    return updated || null;
+  } catch (err) {
+    console.error("Error updating order status:", err);
+    return null;
+  }
 }
 
