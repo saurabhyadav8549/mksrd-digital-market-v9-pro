@@ -17,7 +17,6 @@ export async function getProducts(): Promise<Product[]> {
       return SEED_PRODUCTS.map((item) => ({ ...item }));
     }
 
-    // Auto-seed if table is empty
     if (!dbProducts || dbProducts.length === 0) {
       const seedPayload = SEED_PRODUCTS.map(p => ({
         id: p.id,
@@ -79,7 +78,7 @@ export async function updateProduct(
   return { ...next };
 }
 
-// --- 2. USERS (Supabase Connected via Mobile Number) ---
+// --- 2. USERS ---
 export async function getUsers(): Promise<UserProfile[]> {
   try {
     const { data, error } = await supabase.from("users").select("*");
@@ -136,7 +135,7 @@ export async function saveUserProfile(profile: { phone: string; name: string; ad
   return record;
 }
 
-// --- 3. ORDERS (Supabase Connected with Full Type Support) ---
+// --- 3. ORDERS ---
 export async function getOrders(): Promise<OrderRecord[]> {
   try {
     const { data, error } = await supabase
@@ -151,15 +150,15 @@ export async function getOrders(): Promise<OrderRecord[]> {
       customer_name: o.customer_name,
       customer_address: o.customer_address,
       items: typeof o.items === "string" ? JSON.parse(o.items) : o.items,
-      total_amount: Number(o.total_amount),
+      total_amount: Number(o.grand_total || 0),
       status: o.status as OrderStatus,
       order_date: o.order_date,
-      timestamp: o.timestamp || String(Date.now()),
-      distance_km: Number(o.distance_km || 0),
-      subtotal: Number(o.subtotal || o.total_amount),
-      delivery_fee: Number(o.delivery_fee || 0),
-      delivery_reason: o.delivery_reason || "",
-      grand_total: Number(o.grand_total || o.total_amount),
+      timestamp: String(o.timestamp || Date.now()),
+      distance_km: 0,
+      subtotal: Number(o.grand_total || 0),
+      delivery_fee: 0,
+      delivery_reason: "",
+      grand_total: Number(o.grand_total || 0),
     })) as unknown as OrderRecord[];
   } catch (err) {
     console.error("Error fetching orders:", err);
@@ -167,7 +166,6 @@ export async function getOrders(): Promise<OrderRecord[]> {
   }
 }
 
-// Fetch orders specifically for a unique mobile number (Used in User Profile)
 export async function getOrdersByPhone(phone: string): Promise<OrderRecord[]> {
   const cleanPhone = phone.replace(/\D/g, "").slice(-10);
   try {
@@ -184,15 +182,15 @@ export async function getOrdersByPhone(phone: string): Promise<OrderRecord[]> {
       customer_name: o.customer_name,
       customer_address: o.customer_address,
       items: typeof o.items === "string" ? JSON.parse(o.items) : o.items,
-      total_amount: Number(o.total_amount),
+      total_amount: Number(o.grand_total || 0),
       status: o.status as OrderStatus,
       order_date: o.order_date,
-      timestamp: o.timestamp || String(Date.now()),
-      distance_km: Number(o.distance_km || 0),
-      subtotal: Number(o.subtotal || o.total_amount),
-      delivery_fee: Number(o.delivery_fee || 0),
-      delivery_reason: o.delivery_reason || "",
-      grand_total: Number(o.grand_total || o.total_amount),
+      timestamp: String(o.timestamp || Date.now()),
+      distance_km: 0,
+      subtotal: Number(o.grand_total || 0),
+      delivery_fee: 0,
+      delivery_reason: "",
+      grand_total: Number(o.grand_total || 0),
     })) as unknown as OrderRecord[];
   } catch (err) {
     console.error("Error fetching orders by phone:", err);
@@ -213,29 +211,25 @@ export async function createOrder(order: OrderRecord): Promise<OrderRecord> {
     distance_km: Number(order.distance_km || 0),
   };
 
-  // Save to Supabase orders table
+  // Insert into newly created Supabase table matching exact columns
   const { error } = await supabase.from("orders").insert({
     receipt_id: normalizedOrder.receipt_id,
     customer_phone: normalizedOrder.customer_phone,
     customer_name: normalizedOrder.customer_name,
     customer_address: normalizedOrder.customer_address,
     items: normalizedOrder.items,
-    total_amount: normalizedOrder.grand_total,
+    grand_total: normalizedOrder.grand_total,
     status: normalizedOrder.status || "Pending",
     order_date: normalizedOrder.order_date,
     timestamp: normalizedOrder.timestamp,
-    distance_km: normalizedOrder.distance_km,
-    subtotal: normalizedOrder.subtotal,
-    delivery_fee: normalizedOrder.delivery_fee,
-    delivery_reason: normalizedOrder.delivery_reason || "",
-    grand_total: normalizedOrder.grand_total,
   });
 
   if (error) {
     console.error("Supabase order insert error:", error.message);
+    throw new Error(`Supabase error: ${error.message}`);
   }
 
-  // Also save/update user profile automatically using unique mobile number
+  // Save/Update user profile automatically
   if (cleanPhone.length === 10 && order.customer_name && order.customer_address) {
     await saveUserProfile({
       phone: cleanPhone,
