@@ -207,7 +207,7 @@ export async function createOrder(order: OrderRecord): Promise<OrderRecord> {
     customer_phone: cleanPhone,
     order_date: order.order_date || new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
     timestamp: String(order.timestamp || Date.now()),
-    grand_total: Number(order.grand_total || order.total_amount || 0),
+    grand_total: Number(order.grand_total || 0),
     subtotal: Number(order.subtotal || order.grand_total || 0),
     delivery_fee: Number(order.delivery_fee || 0),
     distance_km: Number(order.distance_km || 0),
