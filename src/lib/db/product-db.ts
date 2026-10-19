@@ -167,15 +167,53 @@ export async function getOrders(): Promise<OrderRecord[]> {
   }
 }
 
+// Fetch orders specifically for a unique mobile number (Used in User Profile)
+export async function getOrdersByPhone(phone: string): Promise<OrderRecord[]> {
+  const cleanPhone = phone.replace(/\D/g, "").slice(-10);
+  try {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*")
+      .eq("customer_phone", cleanPhone)
+      .order("order_date", { ascending: false });
+
+    if (error) throw error;
+    return (data || []).map((o: any) => ({
+      receipt_id: o.receipt_id,
+      customer_phone: o.customer_phone,
+      customer_name: o.customer_name,
+      customer_address: o.customer_address,
+      items: typeof o.items === "string" ? JSON.parse(o.items) : o.items,
+      total_amount: Number(o.total_amount),
+      status: o.status as OrderStatus,
+      order_date: o.order_date,
+      timestamp: o.timestamp || Date.now(),
+      distance_km: Number(o.distance_km || 0),
+      subtotal: Number(o.subtotal || o.total_amount),
+      delivery_fee: Number(o.delivery_fee || 0),
+      delivery_reason: o.delivery_reason || "",
+      grand_total: Number(o.grand_total || o.total_amount),
+    })) as unknown as OrderRecord[];
+  } catch (err) {
+    console.error("Error fetching orders by phone:", err);
+    return [];
+  }
+}
+
 export async function createOrder(order: OrderRecord): Promise<OrderRecord> {
   const cleanPhone = order.customer_phone.replace(/\D/g, "").slice(-10);
   const normalizedOrder: OrderRecord = {
     ...order,
     customer_phone: cleanPhone,
     order_date: order.order_date || new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
+    timestamp: order.timestamp || Date.now(),
+    grand_total: Number(order.grand_total || order.total_amount || 0),
+    subtotal: Number(order.subtotal || order.grand_total || 0),
+    delivery_fee: Number(order.delivery_fee || 0),
+    distance_km: Number(order.distance_km || 0),
   };
 
-  // Save to Supabase orders table (using grand_total instead of total_amount)
+  // Save to Supabase orders table
   const { error } = await supabase.from("orders").insert({
     receipt_id: normalizedOrder.receipt_id,
     customer_phone: normalizedOrder.customer_phone,
@@ -183,18 +221,18 @@ export async function createOrder(order: OrderRecord): Promise<OrderRecord> {
     customer_address: normalizedOrder.customer_address,
     items: normalizedOrder.items,
     total_amount: normalizedOrder.grand_total,
-    status: normalizedOrder.status,
+    status: normalizedOrder.status || "Pending",
     order_date: normalizedOrder.order_date,
     timestamp: normalizedOrder.timestamp,
     distance_km: normalizedOrder.distance_km,
     subtotal: normalizedOrder.subtotal,
     delivery_fee: normalizedOrder.delivery_fee,
-    delivery_reason: normalizedOrder.delivery_reason,
+    delivery_reason: normalizedOrder.delivery_reason || "",
     grand_total: normalizedOrder.grand_total,
   });
 
   if (error) {
-    console.error("Error creating order in Supabase:", error.message);
+    console.error("Supabase order insert error:", error.message);
   }
 
   // Also save/update user profile automatically using unique mobile number
