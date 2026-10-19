@@ -9,13 +9,24 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// --- PRODUCTS (Supabase Cloud Database Connected) ---
+// --- PRODUCTS (Supabase Cloud Database Connected with Auto-Seed) ---
 export async function getProducts(): Promise<Product[]> {
   try {
     const { data: dbProducts, error } = await supabase.from("products").select("*");
     
     if (error) {
       console.error("Supabase fetch error:", error.message);
+      return SEED_PRODUCTS.map((item) => ({ ...item }));
+    }
+
+    // Agar table khali hai, toh saare 45 SEED_PRODUCTS apne aap insert ho jayenge!
+    if (!dbProducts || dbProducts.length === 0) {
+      const seedPayload = SEED_PRODUCTS.map(p => ({
+        id: p.id,
+        price_per_kg: p.price_per_kg,
+        in_stock: p.in_stock
+      }));
+      await supabase.from("products").upsert(seedPayload);
       return SEED_PRODUCTS.map((item) => ({ ...item }));
     }
 
