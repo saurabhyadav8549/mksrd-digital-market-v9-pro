@@ -12,11 +12,23 @@ export async function getProducts(): Promise<Product[]> {
   try {
     const { data: dbProducts, error } = await supabase.from("products").select("*");
     
-    if (error || !dbProducts || dbProducts.length === 0) {
+    if (error) {
+      console.error("Supabase fetch error:", error.message);
       return SEED_PRODUCTS.map((item) => ({ ...item }));
     }
 
-    const dbMap = new Map(dbProducts.map((p: any) => [p.id, p]));
+    // Auto-seed if table is empty
+    if (!dbProducts || dbProducts.length === 0) {
+      const seedPayload = SEED_PRODUCTS.map(p => ({
+        id: p.id,
+        price_per_kg: p.price_per_kg,
+        in_stock: p.in_stock
+      }));
+      await supabase.from("products").upsert(seedPayload);
+      return SEED_PRODUCTS.map((item) => ({ ...item }));
+    }
+
+    const dbMap = new Map((dbProducts || []).map((p: any) => [p.id, p]));
 
     return SEED_PRODUCTS.map((seedItem) => {
       const existing: any = dbMap.get(seedItem.id);
@@ -124,7 +136,7 @@ export async function saveUserProfile(profile: { phone: string; name: string; ad
   return record;
 }
 
-// --- 3. ORDERS (Supabase Connected) ---
+// --- 3. ORDERS (Supabase Connected with Full Type Support) ---
 export async function getOrders(): Promise<OrderRecord[]> {
   try {
     const { data, error } = await supabase
@@ -142,7 +154,11 @@ export async function getOrders(): Promise<OrderRecord[]> {
       total_amount: Number(o.total_amount),
       status: o.status as OrderStatus,
       order_date: o.order_date,
-    }));
+      timestamp: o.timestamp || Date.now(),
+      distance_km: Number(o.distance_km || 0),
+      subtotal: Number(o.subtotal || o.total_amount),
+      delivery_fee: Number(o.delivery_fee || 0),
+    })) as OrderRecord[];
   } catch (err) {
     console.error("Error fetching orders:", err);
     return [];
@@ -167,6 +183,10 @@ export async function createOrder(order: OrderRecord): Promise<OrderRecord> {
     total_amount: normalizedOrder.total_amount,
     status: normalizedOrder.status,
     order_date: normalizedOrder.order_date,
+    timestamp: normalizedOrder.timestamp,
+    distance_km: normalizedOrder.distance_km,
+    subtotal: normalizedOrder.subtotal,
+    delivery_fee: normalizedOrder.delivery_fee,
   });
 
   if (error) {
@@ -205,4 +225,3 @@ export async function updateOrderStatus(
     return null;
   }
 }
-
