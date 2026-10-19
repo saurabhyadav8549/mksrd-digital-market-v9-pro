@@ -1,18 +1,83 @@
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { createClient } from "@supabase/supabase-js";
 import { SEED_PRODUCTS } from "@/lib/data/seed-products";
-import { PRODUCTS_FILE, ORDERS_FILE, USERS_FILE, RUNTIME_DIR } from "@/lib/db/paths";
 import type { Product, ProductPatch, OrderRecord, OrderStatus, UserProfile } from "@/lib/types";
+import { mkdir, readFile, writeFile } from "fs/promises";
+import { ORDERS_FILE, USERS_FILE, RUNTIME_DIR } from "@/lib/db/paths";
 
-let productCache: Product[] | null = null;
-let orderCache: OrderRecord[] | null = null;
-let userCache: UserProfile[] | null = null;
+// Initialize Supabase client
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// --- PRODUCTS (Supabase Cloud Database Connected) ---
+export async function getProducts(): Promise<Product[]> {
+  try {
+    const { data: dbProducts, error } = await supabase.from("products").select("*");
+    
+    if (error) {
+      console.error("Supabase fetch error:", error.message);
+      return SEED_PRODUCTS.map((item) => ({ ...item }));
+    }
+
+    const dbMap = new Map((dbProducts || []).map((p: any) => [p.id, p]));
+
+    return SEED_PRODUCTS.map((seedItem) => {
+      const existing: any = dbMap.get(seedItem.id);
+      if (existing) {
+        return {
+          ...seedItem,
+          price_per_kg: Number(existing.price_per_kg),
+          in_stock: Boolean(existing.in_stock),
+        };
+      }
+      return { ...seedItem };
+    });
+  } catch (err) {
+    console.error("Error getting products from Supabase:", err);
+    return SEED_PRODUCTS.map((item) => ({ ...item }));
+  }
+}
+
+export async function updateProduct(
+  id: string,
+  patch: ProductPatch
+): Promise<Product | null> {
+  const products = await getProducts();
+  const index = products.findIndex((item) => item.id === id);
+  if (index === -1) return null;
+
+  const next = { ...products[index] };
+  if (typeof patch.price_per_kg === "number" && Number.isFinite(patch.price_per_kg)) {
+    next.price_per_kg = Math.max(0, Math.round(patch.price_per_kg * 100) / 100);
+  }
+  if (typeof patch.in_stock === "boolean") {
+    next.in_stock = patch.in_stock;
+  }
+
+  // Direct Update / Upsert in Supabase Table
+  const { error } = await supabase
+    .from("products")
+    .upsert({
+      id: next.id,
+      price_per_kg: next.price_per_kg,
+      in_stock: next.in_stock,
+    });
+
+  if (error) {
+    console.error("Supabase update error:", error.message);
+    return null;
+  }
+
+  return { ...next };
+}
+
+// --- USERS & ORDERS (File-system fallback) ---
 let persistChain = Promise.resolve();
 
-async function persistFiles(products: Product[], orders: OrderRecord[], users: UserProfile[]) {
+async function persistFiles(orders: OrderRecord[], users: UserProfile[]) {
   persistChain = persistChain.then(async () => {
     try {
       await mkdir(RUNTIME_DIR, { recursive: true });
-      await writeFile(PRODUCTS_FILE, JSON.stringify(products, null, 2), "utf8");
       await writeFile(ORDERS_FILE, JSON.stringify(orders, null, 2), "utf8");
       await writeFile(USERS_FILE, JSON.stringify(users, null, 2), "utf8");
     } catch (err) {
@@ -23,15 +88,13 @@ async function persistFiles(products: Product[], orders: OrderRecord[], users: U
 }
 
 export async function getUsers(): Promise<UserProfile[]> {
-  if (userCache) return userCache.map((u) => ({ ...u }));
   await mkdir(RUNTIME_DIR, { recursive: true });
   try {
     const raw = await readFile(USERS_FILE, "utf8");
-    userCache = JSON.parse(raw) as UserProfile[];
+    return JSON.parse(raw) as UserProfile[];
   } catch {
-    userCache = [];
+    return [];
   }
-  return userCache.map((u) => ({ ...u }));
 }
 
 export async function getUserByPhone(phone: string): Promise<UserProfile | null> {
@@ -59,74 +122,18 @@ export async function saveUserProfile(profile: { phone: string; name: string; ad
     users.push(record);
   }
 
-  userCache = users;
-  await persistFiles(await getProducts(), await getOrders(), users);
+  await persistFiles(await getOrders(), users);
   return { ...record };
 }
 
-export async function getProducts(): Promise<Product[]> {
-  if (productCache) return productCache.map((item) => ({ ...item }));
-
-  await mkdir(RUNTIME_DIR, { recursive: true });
-  try {
-    const raw = await readFile(PRODUCTS_FILE, "utf8");
-    const parsed = JSON.parse(raw) as Product[];
-    const parsedMap = new Map(parsed.map((p) => [p.id, p]));
-
-    productCache = SEED_PRODUCTS.map((seedItem) => {
-      const existing = parsedMap.get(seedItem.id);
-      if (existing) {
-        return {
-          ...seedItem,
-          price_per_kg: existing.price_per_kg,
-          in_stock: existing.in_stock,
-        };
-      }
-      return { ...seedItem };
-    });
-
-    await persistFiles(productCache, await getOrders(), await getUsers());
-  } catch {
-    productCache = SEED_PRODUCTS.map((item) => ({ ...item }));
-    await persistFiles(productCache, [], []);
-  }
-
-  return productCache.map((item) => ({ ...item }));
-}
-
-export async function updateProduct(
-  id: string,
-  patch: ProductPatch
-): Promise<Product | null> {
-  const products = await getProducts();
-  const index = products.findIndex((item) => item.id === id);
-  if (index === -1) return null;
-
-  const next = { ...products[index] };
-  if (typeof patch.price_per_kg === "number" && Number.isFinite(patch.price_per_kg)) {
-    next.price_per_kg = Math.max(0, Math.round(patch.price_per_kg * 100) / 100);
-  }
-  if (typeof patch.in_stock === "boolean") {
-    next.in_stock = patch.in_stock;
-  }
-
-  products[index] = next;
-  productCache = products;
-  await persistFiles(products, await getOrders(), await getUsers());
-  return { ...next };
-}
-
 export async function getOrders(): Promise<OrderRecord[]> {
-  if (orderCache) return orderCache.map((o) => ({ ...o }));
-
   await mkdir(RUNTIME_DIR, { recursive: true });
   try {
     const raw = await readFile(ORDERS_FILE, "utf8");
-    orderCache = JSON.parse(raw) as OrderRecord[];
+    return JSON.parse(raw) as OrderRecord[];
   } catch {
-    orderCache = [];
+    return [];
   }
-  return orderCache.map((o) => ({ ...o }));
 }
 
 export async function createOrder(order: OrderRecord): Promise<OrderRecord> {
@@ -138,7 +145,6 @@ export async function createOrder(order: OrderRecord): Promise<OrderRecord> {
     order_date: order.order_date || new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
   };
   orders.unshift(normalizedOrder);
-  orderCache = orders;
 
   if (cleanPhone.length === 10 && order.customer_name && order.customer_address) {
     await saveUserProfile({
@@ -147,7 +153,7 @@ export async function createOrder(order: OrderRecord): Promise<OrderRecord> {
       address: order.customer_address,
     });
   } else {
-    await persistFiles(await getProducts(), orders, await getUsers());
+    await persistFiles(orders, await getUsers());
   }
 
   return { ...normalizedOrder };
@@ -162,7 +168,6 @@ export async function updateOrderStatus(
   if (index === -1) return null;
 
   orders[index].status = status;
-  orderCache = orders;
-  await persistFiles(await getProducts(), orders, await getUsers());
+  await persistFiles(orders, await getUsers());
   return { ...orders[index] };
 }
