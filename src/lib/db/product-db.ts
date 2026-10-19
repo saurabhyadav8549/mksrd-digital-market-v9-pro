@@ -175,14 +175,14 @@ export async function createOrder(order: OrderRecord): Promise<OrderRecord> {
     order_date: order.order_date || new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
   };
 
-  // Save to Supabase orders table
+  // Save to Supabase orders table (using grand_total instead of total_amount)
   const { error } = await supabase.from("orders").insert({
     receipt_id: normalizedOrder.receipt_id,
     customer_phone: normalizedOrder.customer_phone,
     customer_name: normalizedOrder.customer_name,
     customer_address: normalizedOrder.customer_address,
     items: normalizedOrder.items,
-    total_amount: normalizedOrder.total_amount,
+    total_amount: normalizedOrder.grand_total,
     status: normalizedOrder.status,
     order_date: normalizedOrder.order_date,
     timestamp: normalizedOrder.timestamp,
