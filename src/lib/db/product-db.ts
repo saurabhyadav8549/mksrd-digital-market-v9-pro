@@ -135,6 +135,7 @@ export async function createOrder(order: OrderRecord): Promise<OrderRecord> {
   const normalizedOrder: OrderRecord = {
     ...order,
     customer_phone: cleanPhone,
+    order_date: order.order_date || new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
   };
   orders.unshift(normalizedOrder);
   orderCache = orders;

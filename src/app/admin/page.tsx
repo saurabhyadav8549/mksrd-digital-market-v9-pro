@@ -132,11 +132,6 @@ export default function AdminPage() {
         setOrders((prev) =>
           prev.map((o) => (o.receipt_id === receiptId ? { ...o, status } : o))
         );
-        if (typeof window !== "undefined" && "BroadcastChannel" in window) {
-          const channel = new BroadcastChannel("mksrd_catalog_sync_v9");
-          channel.postMessage({ type: "ORDER_UPDATED", receiptId });
-          channel.close();
-        }
       }
     } catch (err) {
       console.error("Failed to update order status:", err);
@@ -269,7 +264,7 @@ export default function AdminPage() {
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">
-                Real-Time Order Dispatch & Mandi Catalog Control
+                Date-Wise Order Ledger & Rate Manager
               </p>
             </div>
           </div>
@@ -372,7 +367,7 @@ export default function AdminPage() {
                 <Package className="mx-auto h-10 w-10 text-slate-300 mb-2" />
                 <p className="text-sm font-bold text-slate-700">No Customer Orders Yet</p>
                 <p className="text-xs text-slate-400 mt-1">
-                  When customers place an order, your audio bell will chime and daily ledgers will appear here automatically.
+                  When customers place orders, they will appear here organized date-wise.
                 </p>
               </div>
             ) : (

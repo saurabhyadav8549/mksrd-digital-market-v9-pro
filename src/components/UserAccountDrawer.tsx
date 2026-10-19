@@ -88,9 +88,11 @@ export function UserAccountDrawer() {
     const result = await loginWithPhone(cleanPhone);
     setSubmitting(false);
 
+    // Agar user pehle se registered hai, toh seedha DASHBOARD par bhejo!
     if (result.exists && result.user) {
       setStep("DASHBOARD");
     } else {
+      // Naya user hai toh profile setup maango
       setNameInput("");
       setAddressInput("");
       setStep("PROFILE_SETUP");
@@ -175,7 +177,7 @@ export function UserAccountDrawer() {
                   Login or Create Account
                 </h3>
                 <p className="text-xs text-gray-500 mt-1">
-                  Enter your 10-digit mobile number to view your live order status, past order history, and saved delivery address.
+                  Enter your 10-digit mobile number. If registered, your account and past orders load instantly!
                 </p>
               </div>
 
@@ -294,7 +296,7 @@ export function UserAccountDrawer() {
                   Complete Your Profile
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Save your name and delivery address once—it will auto-fill every time you order!
+                  Save your name and delivery address once—it will be permanently linked to this mobile number!
                 </p>
               </div>
 
@@ -413,7 +415,7 @@ export function UserAccountDrawer() {
                     My Orders & Live Status ({userOrders.length})
                   </h3>
                   <p className="text-[11px] text-gray-500">
-                    Each order shows its Order ID for front-page tracking too
+                    Your complete order history linked to your mobile number
                   </p>
                 </div>
                 <button
@@ -431,7 +433,7 @@ export function UserAccountDrawer() {
                   <Receipt className="mx-auto h-9 w-9 text-gray-300 mb-2" />
                   <p className="text-sm font-bold text-gray-800">No Orders Found Yet</p>
                   <p className="text-xs text-gray-500 mt-1">
-                    Any order placed with mobile number <strong>{currentUser.phone}</strong> will appear here with live delivery status.
+                    Any order placed with mobile number <strong>{currentUser.phone}</strong> will appear here instantly.
                   </p>
                 </div>
               ) : (
@@ -455,7 +457,6 @@ export function UserAccountDrawer() {
                                 type="button"
                                 onClick={() => handleCopyOrderId(order.receipt_id)}
                                 className="inline-flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-600 hover:bg-gray-200"
-                                title="Copy Order ID for Front Page Tracker"
                               >
                                 {copiedId === order.receipt_id ? (
                                   <>
