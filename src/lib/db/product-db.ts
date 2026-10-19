@@ -158,7 +158,9 @@ export async function getOrders(): Promise<OrderRecord[]> {
       distance_km: Number(o.distance_km || 0),
       subtotal: Number(o.subtotal || o.total_amount),
       delivery_fee: Number(o.delivery_fee || 0),
-    })) as OrderRecord[];
+      delivery_reason: o.delivery_reason || "",
+      grand_total: Number(o.grand_total || o.total_amount),
+    })) as unknown as OrderRecord[];
   } catch (err) {
     console.error("Error fetching orders:", err);
     return [];
@@ -187,6 +189,8 @@ export async function createOrder(order: OrderRecord): Promise<OrderRecord> {
     distance_km: normalizedOrder.distance_km,
     subtotal: normalizedOrder.subtotal,
     delivery_fee: normalizedOrder.delivery_fee,
+    delivery_reason: normalizedOrder.delivery_reason,
+    grand_total: normalizedOrder.grand_total,
   });
 
   if (error) {
