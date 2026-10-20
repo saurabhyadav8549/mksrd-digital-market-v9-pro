@@ -7,7 +7,6 @@ export interface Product {
   price_per_kg: number;
   price?: number;
   in_stock: boolean;
-  image?: string;
   weight_kg?: number;
   description?: string;
 }
@@ -16,7 +15,6 @@ export interface ProductPatch {
   price_per_kg?: number;
   in_stock?: boolean;
   name?: string;
-  image?: string;
   category?: ProductCategory;
 }
 
@@ -85,6 +83,5 @@ export interface UserAccount {
   created_at?: string;
 }
 
-// Type aliases so shop-store.tsx and other files work together seamlessly:
 export type OrderReceipt = OrderRecord;
 export type UserProfile = UserAccount;

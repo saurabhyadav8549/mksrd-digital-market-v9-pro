@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Minus, Clock } from "lucide-react";
+import { Plus, Minus, Clock, Apple, Leaf } from "lucide-react";
 import type { Product } from "@/lib/types";
 import { useShop } from "@/lib/store/shop-store";
 import { APP_CONFIG } from "@/lib/config/app-config";
@@ -24,24 +24,21 @@ export function ProductCard({ product }: { product: Product }) {
   return (
     <div className="group relative flex flex-col justify-between rounded-2xl bg-white p-3.5 shadow-sm ring-1 ring-gray-100 hover:shadow-md hover:ring-brand-green/35 transition-all duration-200">
       <div>
-        {/* Product Image Container */}
-        <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-gray-100 flex items-center justify-center">
+        {/* Category Sticker/Icon Container (No Unsplash Images) */}
+        <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-gray-50 flex items-center justify-center border border-gray-100">
           <div className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded-md bg-white/90 backdrop-blur-sm px-1.5 py-0.5 text-[10px] font-bold text-gray-700 shadow-xs">
             <Clock className="h-2.5 w-2.5 text-brand-green" />
             <span>12 MINS</span>
           </div>
 
-          {/* Real Fixed Product Image */}
-          <img
-            src={
-              product.image ||
-              (isFruit
-                ? "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=500&auto=format&fit=crop&q=60"
-                : "https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=500&auto=format&fit=crop&q=60")
-            }
-            alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-          />
+          {/* Clean Fruit/Veggie Sticker Icon */}
+          <div className={`flex items-center justify-center w-16 h-16 rounded-full shadow-inner ${isFruit ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-600'}`}>
+            {isFruit ? (
+              <Apple className="h-8 w-8 transition-transform group-hover:scale-110 duration-300" />
+            ) : (
+              <Leaf className="h-8 w-8 transition-transform group-hover:scale-110 duration-300" />
+            )}
+          </div>
 
           {!product.in_stock && (
             <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50 backdrop-blur-xs">

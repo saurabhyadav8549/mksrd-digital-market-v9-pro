@@ -10,14 +10,20 @@ import type {
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://ouhuicqivhuvlhiakrup.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91aHVpY3Fpdmh1dmxoaWFrcnVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0MDg2ODEsImV4cCI6MjEwNzk4NDY4MX0.omZeFeIw3GGi7ww-hf3-ph53zN8UmX3g0xfc_mYbamg";
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { persistSession: false },
+});
 
 // ==========================================
 // 1. PRODUCTS (Supabase 'products' table)
 // ==========================================
 export async function getProducts(): Promise<Product[]> {
   try {
-    const { data, error } = await supabase.from("products").select("*");
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .order("id", { ascending: true });
+
     if (error || !data || data.length === 0) {
       console.error("Supabase products fetch error:", error);
       return [];
@@ -26,7 +32,6 @@ export async function getProducts(): Promise<Product[]> {
     return data.map((p: any) => {
       const rawId = String(p.id || "").toLowerCase();
 
-      // Category detection from ID
       let category = "vegetable";
       if (rawId.includes("fruit")) {
         category = "fruit";
@@ -34,7 +39,6 @@ export async function getProducts(): Promise<Product[]> {
         category = "vegetable";
       }
 
-      // Clean readable name from ID
       let cleanName = rawId
         .replace(/^(fruit-|veg-|vegetable-)/, "")
         .split("-")
@@ -48,7 +52,6 @@ export async function getProducts(): Promise<Product[]> {
         category: category,
         price_per_kg: Number(p.price_per_kg ?? 0),
         in_stock: Boolean(p.in_stock ?? true),
-        // Image property ko yahan se hata diya hai taaki frontend apna default icon use kare
       };
     });
   } catch (err) {

@@ -1,116 +1,72 @@
-import type { Product } from "@/lib/types";
+import { createClient } from "@supabase/supabase-js";
 
-export const SEED_PRODUCTS: Product[] = [
-  {
-    id: "veg-1",
-    name: "Fresh Potato (Aalu)",
-    category: "vegetable",
-    price_per_kg: 30,
-    in_stock: true,
-    image: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=500&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "veg-2",
-    name: "Red Onion (Pyaaz)",
-    category: "vegetable",
-    price_per_kg: 40,
-    in_stock: true,
-    image: "https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?w=500&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "veg-3",
-    name: "Desi Tomato (Tamatar)",
-    category: "vegetable",
-    price_per_kg: 40,
-    in_stock: true,
-    image: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=500&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "veg-4",
-    name: "Green Chilli (Hari Mirch)",
-    category: "vegetable",
-    price_per_kg: 80,
-    in_stock: true,
-    image: "https://images.unsplash.com/photo-1588252303782-cb80119abd6d?w=500&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "veg-5",
-    name: "Fresh Ginger (Adrak)",
-    category: "vegetable",
-    price_per_kg: 120,
-    in_stock: true,
-    image: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=500&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "veg-6",
-    name: "Garlic (Lehsun)",
-    category: "vegetable",
-    price_per_kg: 200,
-    in_stock: true,
-    image: "https://images.unsplash.com/photo-1540148426945-6cf22a6b2383?w=500&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "veg-7",
-    name: "Cauliflower (Phool Gobhi)",
-    category: "vegetable",
-    price_per_kg: 50,
-    in_stock: true,
-    image: "https://images.unsplash.com/photo-1568584711075-3d021a7c3ca3?w=500&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "veg-8",
-    name: "Green Peas (Matar)",
-    category: "vegetable",
-    price_per_kg: 60,
-    in_stock: true,
-    image: "https://images.unsplash.com/photo-1587735243615-c03f25aaff15?w=500&auto=format&fit=crop&q=60",
-  },
-  {
-    id: " veg-9".trim(),
-    name: "Lady Finger (Bhindi)",
-    category: "vegetable",
-    price_per_kg: 50,
-    in_stock: true,
-    image: "https://images.unsplash.com/photo-1425543103986-22abb7d7e8d2?w=500&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "veg-10",
-    name: "Bottle Gourd (Lauki)",
-    category: "vegetable",
-    price_per_kg: 30,
-    in_stock: true,
-    image: "https://images.unsplash.com/photo-1597362925123-77861d3fbac7?w=500&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "frt-1",
-    name: "Fresh Banana (Kela)",
-    category: "fruit",
-    price_per_kg: 60,
-    in_stock: true,
-    image: "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=500&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "frt-2",
-    name: "Kashmiri Apple (Seb)",
-    category: "fruit",
-    price_per_kg: 160,
-    in_stock: true,
-    image: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=500&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "frt-3",
-    name: "Sweet Papaya (Papita)",
-    category: "fruit",
-    price_per_kg: 50,
-    in_stock: true,
-    image: "https://images.unsplash.com/photo-1517282009859-f000ec3b26fe?w=500&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "frt-4",
-    name: "Pomegranate (Anaar)",
-    category: "fruit",
-    price_per_kg: 180,
-    in_stock: true,
-    image: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=500&auto=format&fit=crop&q=60",
-  },
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://ouhuicqivhuvlhiakrup.supabase.co";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91aHVpY3Fpdmh1dmxoaWFrcnVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0MDg2ODEsImV4cCI6MjEwNzk4NDY4MX0.omZeFeIw3GGi7ww-hf3-ph53zN8UmX3g0xfc_mYbamg";
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// List of all 45 products without images (matching the clean database schema)
+const INITIAL_PRODUCTS = [
+  // Fruits
+  { id: "fruit-apple", price_per_kg: 180, in_stock: true },
+  { id: "fruit-banana", price_per_kg: 50, in_stock: true },
+  { id: "fruit-chikoo", price_per_kg: 90, in_stock: true },
+  { id: "fruit-custard-apple", price_per_kg: 140, in_stock: true },
+  { id: "fruit-grapes", price_per_kg: 100, in_stock: true },
+  { id: "fruit-guava", price_per_kg: 70, in_stock: true },
+  { id: "fruit-litchi", price_per_kg: 160, in_stock: true },
+  { id: "fruit-mango", price_per_kg: 120, in_stock: true },
+  { id: "fruit-mosambi", price_per_kg: 70, in_stock: true },
+  { id: "fruit-muskmelon", price_per_kg: 50, in_stock: true },
+  { id: "fruit-orange", price_per_kg: 90, in_stock: true },
+  { id: "fruit-papaya", price_per_kg: 40, in_stock: true },
+  { id: "fruit-pomegranate", price_per_kg: 160, in_stock: true },
+  { id: "fruit-pineapple", price_per_kg: 80, in_stock: true },
+  { id: "fruit-watermelon", price_per_kg: 35, in_stock: true },
+  { id: "fruit-kiwi", price_per_kg: 200, in_stock: true },
+  { id: "fruit-pear", price_per_kg: 120, in_stock: true },
+  { id: "fruit-plum", price_per_kg: 150, in_stock: true },
+  { id: "fruit-peach", price_per_kg: 140, in_stock: true },
+  { id: "fruit-strawberry", price_per_kg: 250, in_stock: true },
+  { id: "fruit-dragon-fruit", price_per_kg: 220, in_stock: true },
+  { id: "fruit-coconut", price_per_kg: 45, in_stock: true },
+
+  // Vegetables
+  { id: "veg-potato", price_per_kg: 30, in_stock: true },
+  { id: "veg-onion", price_per_kg: 40, in_stock: true },
+  { id: "veg-tomato", price_per_kg: 45, in_stock: true },
+  { id: "veg-green-chilli", price_per_kg: 60, in_stock: true },
+  { id: "veg-ginger", price_per_kg: 90, in_stock: true },
+  { id: "veg-garlic", price_per_kg: 160, in_stock: true },
+  { id: "veg-lemon", price_per_kg: 80, in_stock: true },
+  { id: "veg-coriander", price_per_kg: 40, in_stock: true },
+  { id: "veg-mint", price_per_kg: 50, in_stock: true },
+  { id: "veg-cauliflower", price_per_kg: 40, in_stock: true },
+  { id: "veg-cabbage", price_per_kg: 30, in_stock: true },
+  { id: "veg-carrot", price_per_kg: 50, in_stock: true },
+  { id: "veg-radish", price_per_kg: 30, in_stock: true },
+  { id: "veg-beetroot", price_per_kg: 60, in_stock: true },
+  { id: "veg-capsicum", price_per_kg: 70, in_stock: true },
+  { id: "veg-brinjal", price_per_kg: 40, in_stock: true },
+  { id: "veg-ladyfinger", price_per_kg: 50, in_stock: true },
+  { id: "veg-bottle-gourd", price_per_kg: 35, in_stock: true },
+  { id: "veg-bitter-gourd", price_per_kg: 50, in_stock: true },
+  { id: "veg-ridge-gourd", price_per_kg: 45, in_stock: true },
+  { id: "veg-sponge-gourd", price_per_kg: 40, in_stock: true },
+  { id: "veg-french-beans", price_per_kg: 90, in_stock: true },
+  { id: "veg-peas", price_per_kg: 100, in_stock: true },
 ];
+
+export async function seedProducts() {
+  console.log("Seeding products to Supabase...");
+  for (const product of INITIAL_PRODUCTS) {
+    const { error } = await supabase
+      .from("products")
+      .upsert(product, { onConflict: "id" });
+
+    if (error) {
+      console.error(`Error seeding ${product.id}:`, error.message);
+    }
+  }
+  console.log("Products seeding completed successfully!");
+}
