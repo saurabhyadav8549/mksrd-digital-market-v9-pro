@@ -47,6 +47,8 @@ export interface OrderRecord {
   timestamp?: string;
   subtotal?: number;
   delivery_charge?: number;
+  delivery_fee?: number;
+  delivery_reason?: string;
   grand_total?: number;
   total_amount?: number;
   customer_name?: string;
@@ -66,6 +68,8 @@ export interface NewOrderPayload {
   items: OrderItem[];
   subtotal?: number;
   delivery_charge?: number;
+  delivery_fee?: number;
+  delivery_reason?: string;
   grand_total?: number;
 }
 
@@ -80,3 +84,7 @@ export interface UserAccount {
   address: string;
   created_at?: string;
 }
+
+// Type aliases so shop-store.tsx and other files work together seamlessly:
+export type OrderReceipt = OrderRecord;
+export type UserProfile = UserAccount;

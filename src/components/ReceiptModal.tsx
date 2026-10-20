@@ -1,98 +1,147 @@
-import React from "react";
-import { OrderRecord, OrderItem } from "@/lib/types"; // Path apne project ke hisab se check kar lena
+"use client";
+
+import { CheckCircle2, Printer, X, Phone, MapPin, Calendar, Receipt } from "lucide-react";
+import { useShop } from "@/lib/store/shop-store";
+import { APP_CONFIG } from "@/lib/config/app-config";
+import { formatWeight } from "@/lib/utils/delivery";
+import type { OrderRecord } from "@/lib/types";
 
 interface ReceiptModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  activeReceipt: OrderRecord | null;
+  isOpen?: boolean;
+  onClose?: () => void;
+  activeReceipt?: OrderRecord | null;
 }
 
-export default function ReceiptModal({ isOpen, onClose, activeReceipt }: ReceiptModalProps) {
-  if (!isOpen || !activeReceipt) return null;
+export function ReceiptModal(props: ReceiptModalProps = {}) {
+  const shop = useShop();
+
+  const receipt = props.activeReceipt !== undefined ? props.activeReceipt : shop.activeReceipt;
+  const isOpen = props.isOpen !== undefined ? props.isOpen : Boolean(receipt);
+  const handleClose = props.onClose || (() => shop.setActiveReceipt(null));
+
+  if (!isOpen || !receipt) return null;
+
+  const grandTotal = Number(receipt.grand_total ?? receipt.total_amount ?? 0);
+  const subtotal = Number(receipt.subtotal ?? grandTotal);
+  const deliveryCharge = Number(receipt.delivery_charge ?? 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl transition-all">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-          <div>
-            <h3 className="text-lg font-bold text-gray-900">Order Receipt</h3>
-            <p className="text-xs text-gray-500">
-              {activeReceipt.created_at ? new Date(activeReceipt.created_at).toLocaleString() : ""}
-            </p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+      <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl border border-gray-100">
+        <div className="bg-brand-green px-5 py-4 text-white flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-brand-accent" />
+            <div>
+              <h2 className="text-sm font-black uppercase tracking-wide">
+                Official Digital Rashid
+              </h2>
+              <p className="text-[11px] text-green-100">{APP_CONFIG.brand.name}</p>
+            </div>
           </div>
           <button
-            onClick={onClose}
-            className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+            type="button"
+            onClick={handleClose}
+            className="rounded-full bg-white/15 p-1.5 text-white hover:bg-white/25 transition"
           >
-            ✕
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Customer Details */}
-        <div className="my-4 space-y-1 rounded-xl bg-gray-50 p-3 text-sm">
-          <p className="font-semibold text-gray-800">
-            Customer: <span className="font-normal text-gray-600">{activeReceipt.customer_name || "N/A"}</span>
-          </p>
-          <p className="font-semibold text-gray-800">
-            Phone: <span className="font-normal text-gray-600">{activeReceipt.customer_phone || "N/A"}</span>
-          </p>
-          <p className="font-semibold text-gray-800">
-            Address: <span className="font-normal text-gray-600">{activeReceipt.delivery_address || "N/A"}</span>
-          </p>
-          <p className="font-semibold text-gray-800">
-            Status: <span className="font-normal text-gray-600">{activeReceipt.status || "Pending"}</span>
-          </p>
-        </div>
+        <div className="p-5 space-y-4 max-h-[80vh] overflow-y-auto text-xs">
+          <div className="flex items-center justify-between border-b border-dashed border-gray-200 pb-3">
+            <div>
+              <span className="text-[10px] font-bold uppercase text-gray-400 block">
+                Receipt ID
+              </span>
+              <span className="font-mono text-sm font-black text-brand-green">
+                #{receipt.receipt_id}
+              </span>
+            </div>
+            <div className="text-right">
+              <span className="text-[10px] font-bold uppercase text-gray-400 block">
+                Date & Time
+              </span>
+              <span className="font-semibold text-gray-700 inline-flex items-center gap-1">
+                <Calendar className="h-3 w-3 text-gray-400" />
+                {receipt.timestamp || receipt.order_date || "Just Now"}
+              </span>
+            </div>
+          </div>
 
-        {/* Items Table / List */}
-        <div className="max-h-60 overflow-y-auto pr-1">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-gray-100 text-xs font-semibold text-gray-400 uppercase">
-              <tr>
-                <th className="py-2">Item</th>
-                <th className="py-2 text-center">Qty/Weight</th>
-                <th className="py-2 text-right">Price</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {activeReceipt.items?.map((item: OrderItem, idx: number) => (
-                <tr key={idx}>
-                  <td className="py-2 font-medium text-gray-900">
-                    {item.product?.name || item.name || "Product"}
-                  </td>
-                  <td className="py-2 text-center text-gray-600">
-                    {item.weight_kg < 1
-                      ? `${Math.round(item.weight_kg * 1000)}g`
-                      : `${item.weight_kg}kg`}
-                  </td>
-                  <td className="py-2 text-right font-medium text-gray-900">
-                    Rs. {item.total_price || item.line_total || 0}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+          <div className="rounded-xl bg-gray-50 p-3 border border-gray-100 space-y-1">
+            <p className="font-extrabold text-gray-900">{receipt.customer_name}</p>
+            <p className="text-gray-600 flex items-center gap-1.5">
+              <Phone className="h-3 w-3 text-brand-green" /> +91 {receipt.customer_phone}
+            </p>
+            <p className="text-gray-600 flex items-start gap-1.5">
+              <MapPin className="h-3 w-3 text-brand-green shrink-0 mt-0.5" />
+              <span>
+                {receipt.customer_address || receipt.delivery_address}
+                {receipt.distance_km ? ` (${receipt.distance_km} km)` : ""}
+              </span>
+            </p>
+          </div>
 
-        {/* Grand Total */}
-        <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4 text-base font-bold text-gray-900">
-          <span>Grand Total:</span>
-          <span className="text-brand-green">
-            Rs. {Number(activeReceipt.grand_total || activeReceipt.total_amount || 0)}
-          </span>
-        </div>
+          <div>
+            <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-2 flex items-center gap-1">
+              <Receipt className="h-3 w-3" /> Ordered Items ({receipt.items.length})
+            </div>
+            <div className="divide-y divide-gray-100 border-t border-b border-gray-100">
+              {receipt.items.map((item: any, idx: number) => {
+                const itemName = item.product?.name || item.name || "Mandi Item";
+                const itemTotal = Number(item.total_price ?? item.line_total ?? 0);
+                return (
+                  <div key={idx} className="py-2 flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-gray-800">{itemName}</span>
+                      <span className="ml-1.5 text-[11px] font-semibold text-brand-green">
+                        ({formatWeight(item.weight_kg)})
+                      </span>
+                    </div>
+                    <span className="font-extrabold text-gray-900">Rs. {itemTotal}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
-        {/* Close Button */}
-        <div className="mt-6">
-          <button
-            onClick={onClose}
-            className="w-full rounded-xl bg-slate-900 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-slate-800 transition-colors"
-          >
-            Close Receipt
-          </button>
+          <div className="space-y-1.5 pt-1">
+            <div className="flex justify-between text-gray-600">
+              <span>Items Subtotal</span>
+              <span className="font-bold">Rs. {subtotal}</span>
+            </div>
+            <div className="flex justify-between text-gray-600">
+              <span>Delivery Charge</span>
+              <span className="font-bold">
+                {deliveryCharge === 0 ? "FREE" : `Rs. ${deliveryCharge}`}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm font-black text-gray-900 border-t border-gray-200 pt-2">
+              <span>Grand Total (COD / UPI)</span>
+              <span className="text-brand-green">Rs. {grandTotal}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 py-2.5 text-xs font-extrabold text-gray-700 hover:bg-gray-100 transition"
+            >
+              <Printer className="h-3.5 w-3.5" /> Print Rashid
+            </button>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="flex-1 rounded-xl bg-brand-green py-2.5 text-xs font-extrabold text-white hover:bg-brand-dark transition"
+            >
+              Done
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
+export default ReceiptModal;

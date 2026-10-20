@@ -1,6 +1,12 @@
 import fs from "fs";
 import path from "path";
-import type { Product } from "@/lib/types";
+import type {
+  Product,
+  ProductPatch,
+  OrderRecord,
+  OrderStatus,
+  UserAccount,
+} from "@/lib/types";
 
 export const SEED_PRODUCTS: Product[] = [
   {
@@ -119,9 +125,16 @@ export const SEED_PRODUCTS: Product[] = [
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const PRODUCTS_FILE = path.join(DATA_DIR, "products.json");
+const USERS_FILE = path.join(DATA_DIR, "users.json");
+const ORDERS_FILE = path.join(DATA_DIR, "orders.json");
 
 let memoryProducts: Product[] = [...SEED_PRODUCTS];
+let memoryUsers: Record<string, UserAccount> = {};
+let memoryOrders: OrderRecord[] = [];
 
+// ==========================================
+// 1. PRODUCTS DB FUNCTIONS
+// ==========================================
 function ensureProductsLoaded(): Product[] {
   try {
     if (fs.existsSync(PRODUCTS_FILE)) {
@@ -138,7 +151,7 @@ function ensureProductsLoaded(): Product[] {
       }
     }
   } catch {
-    // Fallback to in-memory seed products on serverless/Vercel read-only environments
+    // Fallback to in-memory seed products
   }
   return memoryProducts;
 }
@@ -150,22 +163,18 @@ function saveProductsToDisk(products: Product[]): void {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
     fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(products, null, 2), "utf-8");
-  } catch {
-    // Ignore write errors in read-only Vercel runtime; memoryProducts stays updated
-  }
+  } catch {}
 }
 
 export async function getProducts(): Promise<Product[]> {
   return ensureProductsLoaded();
 }
 
-export async function getAllProducts(): Promise<Product[]> {
-  return ensureProductsLoaded();
-}
+export const getAllProducts = getProducts;
 
 export async function updateProduct(
   id: string | number,
-  updates: Partial<Pick<Product, "price_per_kg" | "in_stock" | "name" | "image">>
+  updates: ProductPatch
 ): Promise<Product | null> {
   const products = ensureProductsLoaded();
   const targetId = String(id);
@@ -187,3 +196,157 @@ export async function updateProduct(
 }
 
 export const updateProductById = updateProduct;
+
+// ==========================================
+// 2. USERS DB FUNCTIONS
+// ==========================================
+function ensureUsersLoaded(): Record<string, UserAccount> {
+  try {
+    if (fs.existsSync(USERS_FILE)) {
+      const raw = fs.readFileSync(USERS_FILE, "utf-8");
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        memoryUsers = parsed;
+        return memoryUsers;
+      }
+    }
+  } catch {}
+  return memoryUsers;
+}
+
+function saveUsersToDisk(users: Record<string, UserAccount>): void {
+  memoryUsers = users;
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), "utf-8");
+  } catch {}
+}
+
+export async function getUserByPhone(phone: string): Promise<UserAccount | null> {
+  const users = ensureUsersLoaded();
+  const cleanPhone = String(phone).replace(/\D/g, "").slice(-10);
+  return users[cleanPhone] || null;
+}
+
+export async function saveUserProfile(profile: {
+  phone: string;
+  name: string;
+  address: string;
+}): Promise<UserAccount> {
+  const users = ensureUsersLoaded();
+  const cleanPhone = String(profile.phone).replace(/\D/g, "").slice(-10);
+  const existing = users[cleanPhone];
+
+  const userRecord: UserAccount = {
+    phone: cleanPhone,
+    name: profile.name.trim(),
+    address: profile.address.trim(),
+    created_at: existing?.created_at || new Date().toISOString(),
+  };
+
+  users[cleanPhone] = userRecord;
+  saveUsersToDisk(users);
+  return userRecord;
+}
+
+export const upsertUserProfile = saveUserProfile;
+export const saveUserAccount = saveUserProfile;
+
+// ==========================================
+// 3. ORDERS DB FUNCTIONS
+// ==========================================
+function ensureOrdersLoaded(): OrderRecord[] {
+  try {
+    if (fs.existsSync(ORDERS_FILE)) {
+      const raw = fs.readFileSync(ORDERS_FILE, "utf-8");
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        memoryOrders = parsed;
+        return memoryOrders;
+      }
+    }
+  } catch {}
+  return memoryOrders;
+}
+
+function saveOrdersToDisk(orders: OrderRecord[]): void {
+  memoryOrders = orders;
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders, null, 2), "utf-8");
+  } catch {}
+}
+
+export async function getOrders(phone?: string | null): Promise<OrderRecord[]> {
+  const orders = ensureOrdersLoaded();
+  if (phone) {
+    const cleanPhone = String(phone).replace(/\D/g, "").slice(-10);
+    return orders.filter(
+      (o) => String(o.customer_phone || "").replace(/\D/g, "").slice(-10) === cleanPhone
+    );
+  }
+  return orders;
+}
+
+export const getAllOrders = getOrders;
+export const getOrdersByPhone = getOrders;
+
+export async function createOrder(orderData: Partial<OrderRecord> & Record<string, any>): Promise<OrderRecord> {
+  const orders = ensureOrdersLoaded();
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+  const timeStr = now.toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const newOrder: OrderRecord = {
+    receipt_id: orderData.receipt_id || `MKS-${Math.floor(100000 + Math.random() * 900000)}`,
+    order_date: orderData.order_date || dateStr,
+    timestamp: orderData.timestamp || `${dateStr}, ${timeStr}`,
+    created_at: orderData.created_at || now.toISOString(),
+    customer_name: orderData.customer_name || "Customer",
+    customer_phone: String(orderData.customer_phone || "").replace(/\D/g, "").slice(-10),
+    customer_address: orderData.customer_address || orderData.delivery_address || "",
+    distance_km: Number(orderData.distance_km ?? 1),
+    items: Array.isArray(orderData.items) ? orderData.items : [],
+    subtotal: Number(orderData.subtotal ?? 0),
+    delivery_charge: Number(orderData.delivery_charge ?? 0),
+    grand_total: Number(orderData.grand_total ?? orderData.total_amount ?? 0),
+    total_amount: Number(orderData.grand_total ?? orderData.total_amount ?? 0),
+    status: (orderData.status as OrderStatus) || "Pending",
+  };
+
+  const updatedOrders = [newOrder, ...orders];
+  saveOrdersToDisk(updatedOrders);
+  return newOrder;
+}
+
+export const addOrder = createOrder;
+export const saveOrder = createOrder;
+
+export async function updateOrderStatus(
+  receiptId: string,
+  status: OrderStatus
+): Promise<OrderRecord | null> {
+  const orders = ensureOrdersLoaded();
+  const index = orders.findIndex((o) => o.receipt_id === receiptId);
+  if (index === -1) {
+    return null;
+  }
+
+  orders[index] = {
+    ...orders[index],
+    status,
+  };
+  saveOrdersToDisk(orders);
+  return orders[index];
+}

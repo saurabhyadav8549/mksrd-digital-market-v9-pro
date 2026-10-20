@@ -1,16 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import { Header } from "@/components/Header";
 import { ProductGrid } from "@/components/ProductGrid";
 import { CartDrawer } from "@/components/CartDrawer";
 import { UserAccountDrawer } from "@/components/UserAccountDrawer";
 import ReceiptModal from "@/components/ReceiptModal";
 import { APP_CONFIG } from "@/lib/config/app-config";
-import type { OrderRecord } from "@/lib/types";
+import { useShop } from "@/lib/store/shop-store";
 
 export default function HomePage() {
-  const [activeReceipt, setActiveReceipt] = useState<OrderRecord | null>(null);
+  const { activeReceipt, setActiveReceipt } = useShop();
 
   return (
     <div className="min-h-screen flex flex-col">
