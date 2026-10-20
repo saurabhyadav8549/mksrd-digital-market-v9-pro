@@ -7,14 +7,13 @@ import type {
   UserAccount,
 } from "@/lib/types";
 
-// Supabase credentials directly configured from your project
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://ouhuicqivhuvlhiakrup.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91aHVpY3Fpdmh1dmxoaWFrcnVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0MDg2ODEsImV4cCI6MjEwNzk4NDY4MX0.omZeFeIw3GGi7ww-hf3-ph53zN8UmX3g0xfc_mYbamg";
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // ==========================================
-// 1. PRODUCTS (Supabase 'products' table - 45 items)
+// 1. PRODUCTS (Supabase 'products' table)
 // ==========================================
 export async function getProducts(): Promise<Product[]> {
   try {
@@ -24,13 +23,13 @@ export async function getProducts(): Promise<Product[]> {
       return [];
     }
     return data.map((p: any) => ({
-      id: String(p.id),
-      name: p.name,
-      category: p.category || "vegetable",
-      price_per_kg: Number(p.price_per_kg ?? p.price ?? 0),
-      in_stock: Boolean(p.in_stock ?? true),
-      image: p.image || "",
-      description: p.description || "",
+      id: String(p.id || p._id || Math.random()),
+      name: p.name || p.title || p.product_name || "Mandi Item",
+      category: p.category || p.type || p.category_name || "vegetable",
+      price_per_kg: Number(p.price_per_kg ?? p.price ?? p.rate ?? 0),
+      in_stock: Boolean(p.in_stock ?? p.available ?? true),
+      image: p.image || p.image_url || p.img || p.photo || "",
+      description: p.description || p.desc || "",
     }));
   } catch (err) {
     console.error("Failed to connect to Supabase products:", err);
@@ -58,12 +57,12 @@ export async function updateProduct(
     }
 
     return {
-      id: String(data.id),
-      name: data.name,
-      category: data.category,
+      id: String(data.id || data._id),
+      name: data.name || data.title || data.product_name || "Mandi Item",
+      category: data.category || data.type || "vegetable",
       price_per_kg: Number(data.price_per_kg ?? data.price ?? 0),
       in_stock: Boolean(data.in_stock ?? true),
-      image: data.image || "",
+      image: data.image || data.image_url || "",
       description: data.description || "",
     };
   } catch (err) {
