@@ -48,7 +48,7 @@ export async function getProducts(): Promise<Product[]> {
         category: category,
         price_per_kg: Number(p.price_per_kg ?? 0),
         in_stock: Boolean(p.in_stock ?? true),
-        image: "", // Blank rakha hai taaki card default category icon/badge use kare
+        // Image property ko yahan se hata diya hai taaki frontend apna default icon use kare
       };
     });
   } catch (err) {
@@ -90,7 +90,6 @@ export async function updateProduct(
       category: category,
       price_per_kg: Number(data.price_per_kg ?? 0),
       in_stock: Boolean(data.in_stock ?? true),
-      image: "",
     };
   } catch (err) {
     console.error("Failed to update product in Supabase:", err);
