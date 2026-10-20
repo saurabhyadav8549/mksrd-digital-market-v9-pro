@@ -10,8 +10,14 @@ import type {
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://ouhuicqivhuvlhiakrup.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91aHVpY3Fpdmh1dmxoaWFrcnVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0MDg2ODEsImV4cCI6MjEwNzk4NDY4MX0.omZeFeIw3GGi7ww-hf3-ph53zN8UmX3g0xfc_mYbamg";
 
+// Global cache disabled so Supabase calls never return stale/cached data
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: { persistSession: false },
+  global: {
+    fetch: (url, options) => {
+      return fetch(url, { ...options, cache: "no-store" });
+    },
+  },
 });
 
 // ==========================================
@@ -32,6 +38,7 @@ export async function getProducts(): Promise<Product[]> {
     return data.map((p: any) => {
       const rawId = String(p.id || "").toLowerCase();
 
+      // Category detection from ID
       let category = "vegetable";
       if (rawId.includes("fruit")) {
         category = "fruit";
@@ -39,6 +46,7 @@ export async function getProducts(): Promise<Product[]> {
         category = "vegetable";
       }
 
+      // Clean readable name from ID
       let cleanName = rawId
         .replace(/^(fruit-|veg-|vegetable-)/, "")
         .split("-")
