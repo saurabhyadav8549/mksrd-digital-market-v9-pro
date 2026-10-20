@@ -1,47 +1,40 @@
-export type CategoryType = "vegetable" | "fruit";
-
 export interface Product {
   id: string;
   name: string;
   price_per_kg: number;
   in_stock: boolean;
-  category: CategoryType;
+  category: "vegetable" | "fruit" | string;
+  image?: string;
 }
 
 export interface ProductPatch {
   price_per_kg?: number;
   in_stock?: boolean;
+  image?: string;
 }
 
-export interface CartItem {
-  product: Product;
-  weight_kg: number;
-}
-
-export type OrderStatus = "Pending" | "Out for Delivery" | "Delivered";
+export type OrderStatus = "Pending" | "Confirmed" | "Out for Delivery" | "Delivered" | "Cancelled";
 
 export interface OrderRecord {
   receipt_id: string;
-  timestamp: string;
-  order_date?: string;
-  customer_name: string;
   customer_phone: string;
+  customer_name: string;
   customer_address: string;
-  distance_km: number;
   items: {
-    name: string;
+    product: Product;
     weight_kg: number;
-    price_per_kg: number;
-    line_total: number;
+    total_price: number;
   }[];
-  subtotal: number;
-  delivery_fee: number;
-  delivery_reason: string;
-  grand_total: number;
+  total_amount: number;
   status: OrderStatus;
+  order_date: string;
+  timestamp: string;
+  distance_km?: number;
+  subtotal?: number;
+  delivery_fee?: number;
+  delivery_reason?: string;
+  grand_total?: number;
 }
-
-export type OrderReceipt = OrderRecord;
 
 export interface UserProfile {
   phone: string;
