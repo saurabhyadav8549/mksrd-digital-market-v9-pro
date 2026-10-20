@@ -22,15 +22,35 @@ export async function getProducts(): Promise<Product[]> {
       console.error("Supabase products fetch error:", error);
       return [];
     }
-    return data.map((p: any) => ({
-      id: String(p.id || p._id || Math.random()),
-      name: p.name || p.title || p.product_name || "Mandi Item",
-      category: p.category || p.type || p.category_name || "vegetable",
-      price_per_kg: Number(p.price_per_kg ?? p.price ?? p.rate ?? 0),
-      in_stock: Boolean(p.in_stock ?? p.available ?? true),
-      image: p.image || p.image_url || p.img || p.photo || "",
-      description: p.description || p.desc || "",
-    }));
+
+    return data.map((p: any) => {
+      const rawId = String(p.id || "").toLowerCase();
+
+      // Category detection from ID
+      let category = "vegetable";
+      if (rawId.includes("fruit")) {
+        category = "fruit";
+      } else if (rawId.includes("veg")) {
+        category = "vegetable";
+      }
+
+      // Clean readable name from ID
+      let cleanName = rawId
+        .replace(/^(fruit-|veg-|vegetable-)/, "")
+        .split("-")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+      if (!cleanName) cleanName = "Mandi Item";
+
+      return {
+        id: rawId,
+        name: cleanName,
+        category: category,
+        price_per_kg: Number(p.price_per_kg ?? 0),
+        in_stock: Boolean(p.in_stock ?? true),
+        image: "", // Blank rakha hai taaki card default category icon/badge use kare
+      };
+    });
   } catch (err) {
     console.error("Failed to connect to Supabase products:", err);
     return [];
@@ -56,14 +76,21 @@ export async function updateProduct(
       return null;
     }
 
+    const rawId = String(data.id || "").toLowerCase();
+    let category = rawId.includes("fruit") ? "fruit" : "vegetable";
+    let cleanName = rawId
+      .replace(/^(fruit-|veg-|vegetable-)/, "")
+      .split("-")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+
     return {
-      id: String(data.id || data._id),
-      name: data.name || data.title || data.product_name || "Mandi Item",
-      category: data.category || data.type || "vegetable",
-      price_per_kg: Number(data.price_per_kg ?? data.price ?? 0),
+      id: rawId,
+      name: cleanName || "Mandi Item",
+      category: category,
+      price_per_kg: Number(data.price_per_kg ?? 0),
       in_stock: Boolean(data.in_stock ?? true),
-      image: data.image || data.image_url || "",
-      description: data.description || "",
+      image: "",
     };
   } catch (err) {
     console.error("Failed to update product in Supabase:", err);
