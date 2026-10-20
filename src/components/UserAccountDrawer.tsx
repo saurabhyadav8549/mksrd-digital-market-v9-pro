@@ -88,11 +88,9 @@ export function UserAccountDrawer() {
     const result = await loginWithPhone(cleanPhone);
     setSubmitting(false);
 
-    // Agar user pehle se registered hai, toh seedha DASHBOARD par bhejo!
     if (result.exists && result.user) {
       setStep("DASHBOARD");
     } else {
-      // Naya user hai toh profile setup maango
       setNameInput("");
       setAddressInput("");
       setStep("PROFILE_SETUP");
@@ -493,12 +491,12 @@ export function UserAccountDrawer() {
                         </div>
 
                         <div className="flex flex-wrap gap-1.5">
-                          {order.items.map((item, idx) => (
+                          {order.items.map((item: any, idx: number) => (
                             <span
                               key={idx}
                               className="inline-flex items-center rounded-lg bg-gray-50 px-2 py-1 text-[11px] font-bold text-gray-700 border border-gray-200/70"
                             >
-                              {item.name} ({formatWeight(item.weight_kg)}) - Rs. {item.line_total}
+                              {item.product?.name || item.name || "Item"} ({formatWeight(item.weight_kg)}) - Rs. {item.total_price || item.line_total || 0}
                             </span>
                           ))}
                         </div>
@@ -509,7 +507,7 @@ export function UserAccountDrawer() {
                               Grand Total
                             </span>
                             <span className="text-sm font-black text-gray-900">
-                              Rs. {order.grand_total}
+                              Rs. {Number(order.grand_total || order.total_amount || 0)}
                             </span>
                           </div>
 

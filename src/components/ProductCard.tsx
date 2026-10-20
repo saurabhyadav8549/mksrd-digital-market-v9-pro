@@ -11,7 +11,11 @@ export function ProductCard({ product }: { product: Product }) {
   const { cart, addToCart, updateCartWeight } = useShop();
 
   const [selectedWeightKg, setSelectedWeightKg] = useState<number>(0.5);
-  const cartItem = cart.find((item) => item.product.id === product.id);
+
+  const productIdStr = String(product.id);
+  const cartItem = cart.find(
+    (item: any) => String(item.product?.id ?? item.id) === productIdStr
+  );
   const currentWeightInCart = cartItem ? cartItem.weight_kg : 0;
   const displayPrice = Math.round(product.price_per_kg * selectedWeightKg);
 
@@ -29,7 +33,12 @@ export function ProductCard({ product }: { product: Product }) {
 
           {/* Real Fixed Product Image */}
           <img
-            src={product.image || (isFruit ? "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=500&auto=format&fit=crop&q=60" : "https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=500&auto=format&fit=crop&q=60")}
+            src={
+              product.image ||
+              (isFruit
+                ? "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=500&auto=format&fit=crop&q=60"
+                : "https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=500&auto=format&fit=crop&q=60")
+            }
             alt={product.name}
             className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
           />
@@ -105,7 +114,7 @@ export function ProductCard({ product }: { product: Product }) {
                 type="button"
                 onClick={() =>
                   updateCartWeight(
-                    product.id,
+                    productIdStr,
                     currentWeightInCart - APP_CONFIG.weightStepKg
                   )
                 }
@@ -121,7 +130,7 @@ export function ProductCard({ product }: { product: Product }) {
                 type="button"
                 onClick={() =>
                   updateCartWeight(
-                    product.id,
+                    productIdStr,
                     currentWeightInCart + APP_CONFIG.weightStepKg
                   )
                 }

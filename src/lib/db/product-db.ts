@@ -1,263 +1,189 @@
-import { createClient } from "@supabase/supabase-js";
-import { SEED_PRODUCTS } from "@/lib/data/seed-products";
-import type { Product, ProductPatch, OrderRecord, OrderStatus, UserProfile } from "@/lib/types";
+import fs from "fs";
+import path from "path";
+import type { Product } from "@/lib/types";
 
-// Initialize Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const SEED_PRODUCTS: Product[] = [
+  {
+    id: "veg-1",
+    name: "Fresh Potato (Aalu)",
+    category: "vegetable",
+    price_per_kg: 30,
+    in_stock: true,
+    image: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=500&auto=format&fit=crop&q=60",
+  },
+  {
+    id: "veg-2",
+    name: "Red Onion (Pyaaz)",
+    category: "vegetable",
+    price_per_kg: 40,
+    in_stock: true,
+    image: "https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?w=500&auto=format&fit=crop&q=60",
+  },
+  {
+    id: "veg-3",
+    name: "Desi Tomato (Tamatar)",
+    category: "vegetable",
+    price_per_kg: 40,
+    in_stock: true,
+    image: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=500&auto=format&fit=crop&q=60",
+  },
+  {
+    id: "veg-4",
+    name: "Green Chilli (Hari Mirch)",
+    category: "vegetable",
+    price_per_kg: 80,
+    in_stock: true,
+    image: "https://images.unsplash.com/photo-1588252303782-cb80119abd6d?w=500&auto=format&fit=crop&q=60",
+  },
+  {
+    id: "veg-5",
+    name: "Fresh Ginger (Adrak)",
+    category: "vegetable",
+    price_per_kg: 120,
+    in_stock: true,
+    image: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=500&auto=format&fit=crop&q=60",
+  },
+  {
+    id: "veg-6",
+    name: "Garlic (Lehsun)",
+    category: "vegetable",
+    price_per_kg: 200,
+    in_stock: true,
+    image: "https://images.unsplash.com/photo-1540148426945-6cf22a6b2383?w=500&auto=format&fit=crop&q=60",
+  },
+  {
+    id: "veg-7",
+    name: "Cauliflower (Phool Gobhi)",
+    category: "vegetable",
+    price_per_kg: 50,
+    in_stock: true,
+    image: "https://images.unsplash.com/photo-1568584711075-3d021a7c3ca3?w=500&auto=format&fit=crop&q=60",
+  },
+  {
+    id: "veg-8",
+    name: "Green Peas (Matar)",
+    category: "vegetable",
+    price_per_kg: 60,
+    in_stock: true,
+    image: "https://images.unsplash.com/photo-1587735243615-c03f25aaff15?w=500&auto=format&fit=crop&q=60",
+  },
+  {
+    id: "veg-9",
+    name: "Lady Finger (Bhindi)",
+    category: "vegetable",
+    price_per_kg: 50,
+    in_stock: true,
+    image: "https://images.unsplash.com/photo-1425543103986-22abb7d7e8d2?w=500&auto=format&fit=crop&q=60",
+  },
+  {
+    id: "veg-10",
+    name: "Bottle Gourd (Lauki)",
+    category: "vegetable",
+    price_per_kg: 30,
+    in_stock: true,
+    image: "https://images.unsplash.com/photo-1597362925123-77861d3fbac7?w=500&auto=format&fit=crop&q=60",
+  },
+  {
+    id: "frt-1",
+    name: "Fresh Banana (Kela)",
+    category: "fruit",
+    price_per_kg: 60,
+    in_stock: true,
+    image: "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=500&auto=format&fit=crop&q=60",
+  },
+  {
+    id: "frt-2",
+    name: "Kashmiri Apple (Seb)",
+    category: "fruit",
+    price_per_kg: 160,
+    in_stock: true,
+    image: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=500&auto=format&fit=crop&q=60",
+  },
+  {
+    id: "frt-3",
+    name: "Sweet Papaya (Papita)",
+    category: "fruit",
+    price_per_kg: 50,
+    in_stock: true,
+    image: "https://images.unsplash.com/photo-1517282009859-f000ec3b26fe?w=500&auto=format&fit=crop&q=60",
+  },
+  {
+    id: "frt-4",
+    name: "Pomegranate (Anaar)",
+    category: "fruit",
+    price_per_kg: 180,
+    in_stock: true,
+    image: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=500&auto=format&fit=crop&q=60",
+  },
+];
 
-// --- 1. PRODUCTS ---
-export async function getProducts(): Promise<Product[]> {
+const DATA_DIR = path.join(process.cwd(), "data");
+const PRODUCTS_FILE = path.join(DATA_DIR, "products.json");
+
+let memoryProducts: Product[] = [...SEED_PRODUCTS];
+
+function ensureProductsLoaded(): Product[] {
   try {
-    const { data: dbProducts, error } = await supabase.from("products").select("*");
-    
-    if (error) {
-      console.error("Supabase fetch error:", error.message);
-      return SEED_PRODUCTS.map((item) => ({ ...item }));
-    }
-
-    if (!dbProducts || dbProducts.length === 0) {
-      const seedPayload = SEED_PRODUCTS.map(p => ({
-        id: p.id,
-        price_per_kg: p.price_per_kg,
-        in_stock: p.in_stock
-      }));
-      await supabase.from("products").upsert(seedPayload);
-      return SEED_PRODUCTS.map((item) => ({ ...item }));
-    }
-
-    const dbMap = new Map((dbProducts || []).map((p: any) => [p.id, p]));
-
-    return SEED_PRODUCTS.map((seedItem) => {
-      const existing: any = dbMap.get(seedItem.id);
-      if (existing) {
-        return {
-          ...seedItem,
-          price_per_kg: Number(existing.price_per_kg),
-          in_stock: Boolean(existing.in_stock),
-        };
+    if (fs.existsSync(PRODUCTS_FILE)) {
+      const raw = fs.readFileSync(PRODUCTS_FILE, "utf-8");
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        memoryProducts = parsed.map((p: any) => ({
+          ...p,
+          id: String(p.id),
+          price_per_kg: Number(p.price_per_kg ?? p.price ?? 0),
+          in_stock: Boolean(p.in_stock ?? true),
+        }));
+        return memoryProducts;
       }
-      return { ...seedItem };
-    });
-  } catch (err) {
-    console.error("Error getting products:", err);
-    return SEED_PRODUCTS.map((item) => ({ ...item }));
+    }
+  } catch {
+    // Fallback to in-memory seed products on serverless/Vercel read-only environments
   }
+  return memoryProducts;
+}
+
+function saveProductsToDisk(products: Product[]): void {
+  memoryProducts = products;
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(products, null, 2), "utf-8");
+  } catch {
+    // Ignore write errors in read-only Vercel runtime; memoryProducts stays updated
+  }
+}
+
+export async function getProducts(): Promise<Product[]> {
+  return ensureProductsLoaded();
+}
+
+export async function getAllProducts(): Promise<Product[]> {
+  return ensureProductsLoaded();
 }
 
 export async function updateProduct(
-  id: string,
-  patch: ProductPatch
+  id: string | number,
+  updates: Partial<Pick<Product, "price_per_kg" | "in_stock" | "name" | "image">>
 ): Promise<Product | null> {
-  const products = await getProducts();
-  const index = products.findIndex((item) => item.id === id);
-  if (index === -1) return null;
+  const products = ensureProductsLoaded();
+  const targetId = String(id);
+  const index = products.findIndex((p) => String(p.id) === targetId);
 
-  const next = { ...products[index] };
-  if (typeof patch.price_per_kg === "number" && Number.isFinite(patch.price_per_kg)) {
-    next.price_per_kg = Math.max(0, Math.round(patch.price_per_kg * 100) / 100);
-  }
-  if (typeof patch.in_stock === "boolean") {
-    next.in_stock = patch.in_stock;
-  }
-
-  const { error } = await supabase
-    .from("products")
-    .upsert({
-      id: next.id,
-      price_per_kg: next.price_per_kg,
-      in_stock: next.in_stock,
-    });
-
-  if (error) {
-    console.error("Supabase update error:", error.message);
+  if (index === -1) {
     return null;
   }
 
-  return { ...next };
-}
-
-// --- 2. USERS ---
-export async function getUsers(): Promise<UserProfile[]> {
-  try {
-    const { data, error } = await supabase.from("users").select("*");
-    if (error) throw error;
-    return (data || []).map((u: any) => ({
-      phone: u.phone,
-      name: u.name,
-      address: u.address,
-      created_at: u.created_at,
-    }));
-  } catch (err) {
-    console.error("Error fetching users:", err);
-    return [];
-  }
-}
-
-export async function getUserByPhone(phone: string): Promise<UserProfile | null> {
-  const cleanPhone = phone.replace(/\D/g, "").slice(-10);
-  try {
-    const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("phone", cleanPhone)
-      .single();
-
-    if (error || !data) return null;
-    return {
-      phone: data.phone,
-      name: data.name,
-      address: data.address,
-      created_at: data.created_at,
-    };
-  } catch {
-    return null;
-  }
-}
-
-export async function saveUserProfile(profile: { phone: string; name: string; address: string }): Promise<UserProfile> {
-  const cleanPhone = profile.phone.replace(/\D/g, "").slice(-10);
-  const existingUser = await getUserByPhone(cleanPhone);
-
-  const record: UserProfile = {
-    phone: cleanPhone,
-    name: profile.name.trim(),
-    address: profile.address.trim(),
-    created_at: existingUser ? existingUser.created_at : new Date().toISOString(),
+  const updated: Product = {
+    ...products[index],
+    ...updates,
+    id: String(products[index].id),
   };
 
-  const { error } = await supabase.from("users").upsert(record);
-  if (error) {
-    console.error("Error saving user profile:", error.message);
-  }
-
-  return record;
+  products[index] = updated;
+  saveProductsToDisk(products);
+  return updated;
 }
 
-// --- 3. ORDERS ---
-export async function getOrders(): Promise<OrderRecord[]> {
-  try {
-    const { data, error } = await supabase
-      .from("orders")
-      .select("*")
-      .order("order_date", { ascending: false });
-
-    if (error) throw error;
-    return (data || []).map((o: any) => ({
-      receipt_id: o.receipt_id,
-      customer_phone: o.customer_phone,
-      customer_name: o.customer_name,
-      customer_address: o.customer_address,
-      items: typeof o.items === "string" ? JSON.parse(o.items) : o.items,
-      total_amount: Number(o.grand_total || 0),
-      status: o.status as OrderStatus,
-      order_date: o.order_date,
-      timestamp: String(o.timestamp || Date.now()),
-      distance_km: 0,
-      subtotal: Number(o.grand_total || 0),
-      delivery_fee: 0,
-      delivery_reason: "",
-      grand_total: Number(o.grand_total || 0),
-    })) as unknown as OrderRecord[];
-  } catch (err) {
-    console.error("Error fetching orders:", err);
-    return [];
-  }
-}
-
-export async function getOrdersByPhone(phone: string): Promise<OrderRecord[]> {
-  const cleanPhone = phone.replace(/\D/g, "").slice(-10);
-  try {
-    const { data, error } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("customer_phone", cleanPhone)
-      .order("order_date", { ascending: false });
-
-    if (error) throw error;
-    return (data || []).map((o: any) => ({
-      receipt_id: o.receipt_id,
-      customer_phone: o.customer_phone,
-      customer_name: o.customer_name,
-      customer_address: o.customer_address,
-      items: typeof o.items === "string" ? JSON.parse(o.items) : o.items,
-      total_amount: Number(o.grand_total || 0),
-      status: o.status as OrderStatus,
-      order_date: o.order_date,
-      timestamp: String(o.timestamp || Date.now()),
-      distance_km: 0,
-      subtotal: Number(o.grand_total || 0),
-      delivery_fee: 0,
-      delivery_reason: "",
-      grand_total: Number(o.grand_total || 0),
-    })) as unknown as OrderRecord[];
-  } catch (err) {
-    console.error("Error fetching orders by phone:", err);
-    return [];
-  }
-}
-
-export async function createOrder(order: OrderRecord): Promise<OrderRecord> {
-  const cleanPhone = order.customer_phone.replace(/\D/g, "").slice(-10);
-  const normalizedOrder: OrderRecord = {
-    ...order,
-    customer_phone: cleanPhone,
-    order_date: order.order_date || new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
-    timestamp: String(order.timestamp || Date.now()),
-    grand_total: Number(order.grand_total || 0),
-    subtotal: Number(order.subtotal || order.grand_total || 0),
-    delivery_fee: Number(order.delivery_fee || 0),
-    distance_km: Number(order.distance_km || 0),
-  };
-
-  // Insert into newly created Supabase table matching exact columns
-  const { error } = await supabase.from("orders").insert({
-    receipt_id: normalizedOrder.receipt_id,
-    customer_phone: normalizedOrder.customer_phone,
-    customer_name: normalizedOrder.customer_name,
-    customer_address: normalizedOrder.customer_address,
-    items: normalizedOrder.items,
-    grand_total: normalizedOrder.grand_total,
-    status: normalizedOrder.status || "Pending",
-    order_date: normalizedOrder.order_date,
-    timestamp: normalizedOrder.timestamp,
-  });
-
-  if (error) {
-    console.error("Supabase order insert error:", error.message);
-    throw new Error(`Supabase error: ${error.message}`);
-  }
-
-  // Save/Update user profile automatically
-  if (cleanPhone.length === 10 && order.customer_name && order.customer_address) {
-    await saveUserProfile({
-      phone: cleanPhone,
-      name: order.customer_name,
-      address: order.customer_address,
-    });
-  }
-
-  return normalizedOrder;
-}
-
-export async function updateOrderStatus(
-  receiptId: string,
-  status: OrderStatus
-): Promise<OrderRecord | null> {
-  try {
-    const { error } = await supabase
-      .from("orders")
-      .update({ status })
-      .eq("receipt_id", receiptId);
-
-    if (error) throw error;
-
-    const orders = await getOrders();
-    const updated = orders.find((o) => o.receipt_id === receiptId);
-    return updated || null;
-  } catch (err) {
-    console.error("Error updating order status:", err);
-    return null;
-  }
-}
+export const updateProductById = updateProduct;

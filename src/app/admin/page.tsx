@@ -138,27 +138,30 @@ export default function AdminPage() {
     }
   };
 
-  const handlePriceChange = (id: string, val: string) => {
-    setEditedPrices((prev) => ({ ...prev, [id]: val }));
+  const handlePriceChange = (id: string | number, val: string) => {
+    const stringId = String(id);
+    setEditedPrices((prev) => ({ ...prev, [stringId]: val }));
   };
 
-  const handleSavePrice = async (id: string, currentPrice: number) => {
-    const raw = editedPrices[id];
+  const handleSavePrice = async (id: string | number, currentPrice: number) => {
+    const stringId = String(id);
+    const raw = editedPrices[stringId];
     const parsed = raw !== undefined ? parseFloat(raw) : currentPrice;
     if (Number.isNaN(parsed) || parsed < 0) return;
 
-    setSavingId(id);
-    const ok = await updateProductAdmin(id, { price_per_kg: parsed });
+    setSavingId(stringId);
+    const ok = await updateProductAdmin(stringId, { price_per_kg: parsed });
     setSavingId(null);
     if (ok) {
-      setSavedId(id);
+      setSavedId(stringId);
       setTimeout(() => setSavedId(null), 1500);
     }
   };
 
-  const handleToggleStock = async (id: string, currentStock: boolean) => {
-    setSavingId(id);
-    await updateProductAdmin(id, { in_stock: !currentStock });
+  const handleToggleStock = async (id: string | number, currentStock: boolean) => {
+    const stringId = String(id);
+    setSavingId(stringId);
+    await updateProductAdmin(stringId, { in_stock: !currentStock });
     setSavingId(null);
   };
 
@@ -197,6 +200,7 @@ export default function AdminPage() {
   const outForDeliveryCount = orders.filter((o) => o.status === "Out for Delivery").length;
   const deliveredCount = orders.filter((o) => o.status === "Delivered").length;
   const totalRevenue = orders.reduce((sum, o) => sum + Number(o.grand_total || o.total_amount || 0), 0);
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
@@ -371,7 +375,7 @@ export default function AdminPage() {
               </div>
             ) : (
               <div className="space-y-6">
-               {displayedDates.map((dateStr) => {
+                {displayedDates.map((dateStr) => {
                   const dateOrders = ordersByDate[dateStr] || [];
                   const dayTotalSale = dateOrders.reduce((sum, o) => sum + Number(o.grand_total || o.total_amount || 0), 0);
                   const dayDeliveredSale = dateOrders
@@ -446,7 +450,7 @@ export default function AdminPage() {
                                     Bill Total
                                   </span>
                                   <span className="text-sm font-black text-slate-900">
-                                    Rs. {order.grand_total}
+                                    Rs. {Number(order.grand_total || order.total_amount || 0)}
                                   </span>
                                 </div>
                               </div>
@@ -469,19 +473,19 @@ export default function AdminPage() {
                               </div>
 
                               <div className="md:col-span-7 flex flex-wrap gap-1.5">
-                                {order.items.map((it, idx) => (
+                                {order.items.map((it: any, idx: number) => (
                                   <span
                                     key={idx}
                                     className="inline-flex items-center rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-slate-700 border border-slate-200 shadow-2xs"
                                   >
-                                    {it.product?.name || "Item"}:{" "}
+                                    {it.product?.name || it.name || "Product"}:{" "}
                                     <span className="text-brand-green ml-1">
                                       {it.weight_kg < 1
                                         ? `${Math.round(it.weight_kg * 1000)}g`
                                         : `${it.weight_kg}kg`}
                                     </span>
                                     <span className="text-slate-400 mx-1">|</span>
-                                    <span>Rs. {it.total_price || 0}</span>
+                                    <span>Rs. {it.total_price || it.line_total || 0}</span>
                                   </span>
                                 ))}
                               </div>
@@ -531,9 +535,10 @@ export default function AdminPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filteredProducts.map((product) => {
+                      const productIdStr = String(product.id);
                       const priceInput =
-                        editedPrices[product.id] !== undefined
-                          ? editedPrices[product.id]
+                        editedPrices[productIdStr] !== undefined
+                          ? editedPrices[productIdStr]
                           : String(product.price_per_kg);
 
                       return (
@@ -563,13 +568,13 @@ export default function AdminPage() {
                               />
                               <button
                                 type="button"
-                                disabled={savingId === product.id}
+                                disabled={savingId === productIdStr}
                                 onClick={() =>
                                   handleSavePrice(product.id, product.price_per_kg)
                                 }
                                 className="inline-flex items-center gap-1 rounded-lg bg-brand-green px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-dark disabled:opacity-50"
                               >
-                                {savedId === product.id ? (
+                                {savedId === productIdStr ? (
                                   <>
                                     <Check className="h-3.5 w-3.5" /> Saved
                                   </>
@@ -584,7 +589,7 @@ export default function AdminPage() {
                           <td className="py-3 px-4">
                             <button
                               type="button"
-                              disabled={savingId === product.id}
+                              disabled={savingId === productIdStr}
                               onClick={() =>
                                 handleToggleStock(product.id, product.in_stock)
                               }
