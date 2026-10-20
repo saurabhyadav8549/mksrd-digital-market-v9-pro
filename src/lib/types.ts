@@ -12,6 +12,14 @@ export interface Product {
   description?: string;
 }
 
+export interface ProductPatch {
+  price_per_kg?: number;
+  in_stock?: boolean;
+  name?: string;
+  image?: string;
+  category?: ProductCategory;
+}
+
 export interface CartItem {
   product: Product;
   id?: string;
@@ -48,6 +56,22 @@ export interface OrderRecord {
   distance_km?: number;
   status: OrderStatus;
   items: OrderItem[];
+}
+
+export interface NewOrderPayload {
+  customer_name: string;
+  customer_phone: string;
+  customer_address: string;
+  distance_km?: number;
+  items: OrderItem[];
+  subtotal?: number;
+  delivery_charge?: number;
+  grand_total?: number;
+}
+
+export interface OrderStatusPatch {
+  receipt_id: string;
+  status: OrderStatus;
 }
 
 export interface UserAccount {
