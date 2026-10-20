@@ -196,8 +196,7 @@ export default function AdminPage() {
   const pendingCount = orders.filter((o) => o.status === "Pending").length;
   const outForDeliveryCount = orders.filter((o) => o.status === "Out for Delivery").length;
   const deliveredCount = orders.filter((o) => o.status === "Delivered").length;
-  const totalRevenue = orders.reduce((sum, o) => sum + o.grand_total, 0);
-
+  const totalRevenue = orders.reduce((sum, o) => sum + Number(o.grand_total || o.total_amount || 0), 0);
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
@@ -372,13 +371,12 @@ export default function AdminPage() {
               </div>
             ) : (
               <div className="space-y-6">
-                {displayedDates.map((dateStr) => {
+               {displayedDates.map((dateStr) => {
                   const dateOrders = ordersByDate[dateStr] || [];
-                  const dayTotalSale = dateOrders.reduce((sum, o) => sum + o.grand_total, 0);
+                  const dayTotalSale = dateOrders.reduce((sum, o) => sum + Number(o.grand_total || o.total_amount || 0), 0);
                   const dayDeliveredSale = dateOrders
                     .filter((o) => o.status === "Delivered")
-                    .reduce((sum, o) => sum + o.grand_total, 0);
-
+                    .reduce((sum, o) => sum + Number(o.grand_total || o.total_amount || 0), 0);
                   return (
                     <section
                       key={dateStr}
@@ -476,14 +474,14 @@ export default function AdminPage() {
                                     key={idx}
                                     className="inline-flex items-center rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-slate-700 border border-slate-200 shadow-2xs"
                                   >
-                                    {it.name}:{" "}
+                                    {it.product?.name || "Item"}:{" "}
                                     <span className="text-brand-green ml-1">
                                       {it.weight_kg < 1
                                         ? `${Math.round(it.weight_kg * 1000)}g`
                                         : `${it.weight_kg}kg`}
                                     </span>
                                     <span className="text-slate-400 mx-1">|</span>
-                                    <span>Rs. {it.line_total}</span>
+                                    <span>Rs. {it.total_price || 0}</span>
                                   </span>
                                 ))}
                               </div>
