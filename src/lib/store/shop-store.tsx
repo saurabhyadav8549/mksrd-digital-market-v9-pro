@@ -225,16 +225,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) return false;
       const data = await res.json();
 
-      // Immediately update local state and re-fetch fresh catalog from server
       setProducts((prev) => prev.map((p) => (p.id === id ? data.product : p)));
       setCart((prev) =>
         prev.map((item) =>
           item.product.id === id ? { ...item, product: data.product } : item
         )
       );
-
-      // Force refresh to guarantee sync with Supabase and clear stale cache
-      await refreshProducts();
 
       if (typeof window !== "undefined" && "BroadcastChannel" in window) {
         const channel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);

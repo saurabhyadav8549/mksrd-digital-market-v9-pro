@@ -4,20 +4,19 @@ import type { ProductPatch } from "@/lib/types";
 
 export async function PATCH(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> | { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const resolvedParams = await Promise.resolve(context.params);
-    const id = resolvedParams.id;
     const body = (await request.json()) as ProductPatch;
+    const updated = await updateProduct(params.id, body);
 
-    const updated = await updateProduct(id, body);
     if (!updated) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
-    return NextResponse.json({ ok: true, product: updated }, { status: 200 });
+
+    return NextResponse.json({ product: updated });
   } catch (error) {
     console.error("Error updating product:", error);
-    return NextResponse.json({ error: "Failed to update product" }, { status: 500 });
+    return NextResponse.json({ error: "Invalid request payload" }, { status: 400 });
   }
 }

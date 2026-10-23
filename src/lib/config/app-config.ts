@@ -6,7 +6,7 @@ export const APP_CONFIG = {
     supportPhone: "+91 78811 24766",
   },
   admin: {
-    password: "mksrd@55555",
+    password: "mksrd@123",
   },
   deliveryRules: {
     freeDistanceThresholdKm: 1.0,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Minus, Clock, Apple, Leaf } from "lucide-react";
+import { Plus, Minus, Clock, Leaf, Apple } from "lucide-react";
 import type { Product } from "@/lib/types";
 import { useShop } from "@/lib/store/shop-store";
 import { APP_CONFIG } from "@/lib/config/app-config";
@@ -11,37 +11,40 @@ export function ProductCard({ product }: { product: Product }) {
   const { cart, addToCart, updateCartWeight } = useShop();
 
   const [selectedWeightKg, setSelectedWeightKg] = useState<number>(0.5);
-
-  const productIdStr = String(product.id);
-  const cartItem = cart.find(
-    (item: any) => String(item.product?.id ?? item.id) === productIdStr
-  );
+  const cartItem = cart.find((item) => item.product.id === product.id);
   const currentWeightInCart = cartItem ? cartItem.weight_kg : 0;
   const displayPrice = Math.round(product.price_per_kg * selectedWeightKg);
 
   const isFruit = product.category === "fruit";
 
   return (
-    <div className="group relative flex flex-col justify-between rounded-2xl bg-white p-3.5 shadow-sm ring-1 ring-gray-100 hover:shadow-md hover:ring-brand-green/35 transition-all duration-200">
+    <div className="group relative flex flex-col justify-between rounded-2xl bg-white p-3.5 shadow-sm ring-1 ring-gray-100 hover:shadow-md hover:ring-brand-green/30 transition-all duration-200">
       <div>
-        {/* Category Sticker/Icon Container (No Unsplash Images) */}
-        <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-xl bg-gray-50 flex items-center justify-center border border-gray-100">
-          <div className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded-md bg-white/90 backdrop-blur-sm px-1.5 py-0.5 text-[10px] font-bold text-gray-700 shadow-xs">
+        <div
+          className={`relative mb-3 aspect-square w-full overflow-hidden rounded-xl flex flex-col items-center justify-center shadow-inner ${
+            isFruit
+              ? "bg-gradient-to-br from-amber-50 to-orange-100 text-orange-700"
+              : "bg-gradient-to-br from-emerald-50 to-green-100 text-brand-green"
+          }`}
+        >
+          <div className="absolute top-2 left-2 flex items-center gap-1 rounded-md bg-white/90 backdrop-blur-sm px-1.5 py-0.5 text-[10px] font-bold text-gray-700 shadow-xs">
             <Clock className="h-2.5 w-2.5 text-brand-green" />
             <span>12 MINS</span>
           </div>
 
-          {/* Clean Fruit/Veggie Sticker Icon */}
-          <div className={`flex items-center justify-center w-16 h-16 rounded-full shadow-inner ${isFruit ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-600'}`}>
+          <div className="p-4 rounded-2xl bg-white/80 shadow-sm backdrop-blur-sm group-hover:scale-110 transition duration-300">
             {isFruit ? (
-              <Apple className="h-8 w-8 transition-transform group-hover:scale-110 duration-300" />
+              <Apple className="h-12 w-12 stroke-[2.2]" />
             ) : (
-              <Leaf className="h-8 w-8 transition-transform group-hover:scale-110 duration-300" />
+              <Leaf className="h-12 w-12 stroke-[2.2]" />
             )}
           </div>
+          <span className="mt-2 text-xs font-black tracking-wide uppercase opacity-75">
+            {isFruit ? "Fresh Fruit" : "Fresh Sabzi"}
+          </span>
 
           {!product.in_stock && (
-            <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50 backdrop-blur-xs">
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-xs">
               <span className="rounded-lg bg-red-600 px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-white shadow">
                 Out of Stock
               </span>
@@ -111,12 +114,12 @@ export function ProductCard({ product }: { product: Product }) {
                 type="button"
                 onClick={() =>
                   updateCartWeight(
-                    productIdStr,
+                    product.id,
                     currentWeightInCart - APP_CONFIG.weightStepKg
                   )
                 }
                 className="px-2.5 py-2 hover:bg-brand-dark rounded-l-xl transition"
-                title="Decrease weight"
+                title="Decrease by 250g"
               >
                 <Minus className="h-3.5 w-3.5" />
               </button>
@@ -127,12 +130,12 @@ export function ProductCard({ product }: { product: Product }) {
                 type="button"
                 onClick={() =>
                   updateCartWeight(
-                    productIdStr,
+                    product.id,
                     currentWeightInCart + APP_CONFIG.weightStepKg
                   )
                 }
                 className="px-2.5 py-2 hover:bg-brand-dark rounded-r-xl transition"
-                title="Increase weight"
+                title="Increase by 250g"
               >
                 <Plus className="h-3.5 w-3.5" />
               </button>

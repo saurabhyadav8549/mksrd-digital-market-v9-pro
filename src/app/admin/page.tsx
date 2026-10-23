@@ -132,36 +132,38 @@ export default function AdminPage() {
         setOrders((prev) =>
           prev.map((o) => (o.receipt_id === receiptId ? { ...o, status } : o))
         );
+        if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+          const channel = new BroadcastChannel("mksrd_catalog_sync_v9");
+          channel.postMessage({ type: "ORDER_UPDATED", receiptId });
+          channel.close();
+        }
       }
     } catch (err) {
       console.error("Failed to update order status:", err);
     }
   };
 
-  const handlePriceChange = (id: string | number, val: string) => {
-    const stringId = String(id);
-    setEditedPrices((prev) => ({ ...prev, [stringId]: val }));
+  const handlePriceChange = (id: string, val: string) => {
+    setEditedPrices((prev) => ({ ...prev, [id]: val }));
   };
 
-  const handleSavePrice = async (id: string | number, currentPrice: number) => {
-    const stringId = String(id);
-    const raw = editedPrices[stringId];
+  const handleSavePrice = async (id: string, currentPrice: number) => {
+    const raw = editedPrices[id];
     const parsed = raw !== undefined ? parseFloat(raw) : currentPrice;
     if (Number.isNaN(parsed) || parsed < 0) return;
 
-    setSavingId(stringId);
-    const ok = await updateProductAdmin(stringId, { price_per_kg: parsed });
+    setSavingId(id);
+    const ok = await updateProductAdmin(id, { price_per_kg: parsed });
     setSavingId(null);
     if (ok) {
-      setSavedId(stringId);
+      setSavedId(id);
       setTimeout(() => setSavedId(null), 1500);
     }
   };
 
-  const handleToggleStock = async (id: string | number, currentStock: boolean) => {
-    const stringId = String(id);
-    setSavingId(stringId);
-    await updateProductAdmin(stringId, { in_stock: !currentStock });
+  const handleToggleStock = async (id: string, currentStock: boolean) => {
+    setSavingId(id);
+    await updateProductAdmin(id, { in_stock: !currentStock });
     setSavingId(null);
   };
 
@@ -199,7 +201,7 @@ export default function AdminPage() {
   const pendingCount = orders.filter((o) => o.status === "Pending").length;
   const outForDeliveryCount = orders.filter((o) => o.status === "Out for Delivery").length;
   const deliveredCount = orders.filter((o) => o.status === "Delivered").length;
-  const totalRevenue = orders.reduce((sum, o) => sum + Number(o.grand_total || o.total_amount || 0), 0);
+  const totalRevenue = orders.reduce((sum, o) => sum + o.grand_total, 0);
 
   if (!isAuthenticated) {
     return (
@@ -267,7 +269,7 @@ export default function AdminPage() {
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">
-                Date-Wise Order Ledger & Rate Manager
+                Real-Time Order Dispatch & Mandi Catalog Control
               </p>
             </div>
           </div>
@@ -370,17 +372,18 @@ export default function AdminPage() {
                 <Package className="mx-auto h-10 w-10 text-slate-300 mb-2" />
                 <p className="text-sm font-bold text-slate-700">No Customer Orders Yet</p>
                 <p className="text-xs text-slate-400 mt-1">
-                  When customers place orders, they will appear here organized date-wise.
+                  When customers place an order, your audio bell will chime and daily ledgers will appear here automatically.
                 </p>
               </div>
             ) : (
               <div className="space-y-6">
                 {displayedDates.map((dateStr) => {
                   const dateOrders = ordersByDate[dateStr] || [];
-                  const dayTotalSale = dateOrders.reduce((sum, o) => sum + Number(o.grand_total || o.total_amount || 0), 0);
+                  const dayTotalSale = dateOrders.reduce((sum, o) => sum + o.grand_total, 0);
                   const dayDeliveredSale = dateOrders
                     .filter((o) => o.status === "Delivered")
-                    .reduce((sum, o) => sum + Number(o.grand_total || o.total_amount || 0), 0);
+                    .reduce((sum, o) => sum + o.grand_total, 0);
+
                   return (
                     <section
                       key={dateStr}
@@ -450,7 +453,7 @@ export default function AdminPage() {
                                     Bill Total
                                   </span>
                                   <span className="text-sm font-black text-slate-900">
-                                    Rs. {Number(order.grand_total || order.total_amount || 0)}
+                                    Rs. {order.grand_total}
                                   </span>
                                 </div>
                               </div>
@@ -473,19 +476,19 @@ export default function AdminPage() {
                               </div>
 
                               <div className="md:col-span-7 flex flex-wrap gap-1.5">
-                                {order.items.map((it: any, idx: number) => (
+                                {order.items.map((it, idx) => (
                                   <span
                                     key={idx}
                                     className="inline-flex items-center rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-slate-700 border border-slate-200 shadow-2xs"
                                   >
-                                    {it.product?.name || it.name || "Product"}:{" "}
+                                    {it.name}:{" "}
                                     <span className="text-brand-green ml-1">
                                       {it.weight_kg < 1
                                         ? `${Math.round(it.weight_kg * 1000)}g`
                                         : `${it.weight_kg}kg`}
                                     </span>
                                     <span className="text-slate-400 mx-1">|</span>
-                                    <span>Rs. {it.total_price || it.line_total || 0}</span>
+                                    <span>Rs. {it.line_total}</span>
                                   </span>
                                 ))}
                               </div>
@@ -535,10 +538,9 @@ export default function AdminPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filteredProducts.map((product) => {
-                      const productIdStr = String(product.id);
                       const priceInput =
-                        editedPrices[productIdStr] !== undefined
-                          ? editedPrices[productIdStr]
+                        editedPrices[product.id] !== undefined
+                          ? editedPrices[product.id]
                           : String(product.price_per_kg);
 
                       return (
@@ -568,13 +570,13 @@ export default function AdminPage() {
                               />
                               <button
                                 type="button"
-                                disabled={savingId === productIdStr}
+                                disabled={savingId === product.id}
                                 onClick={() =>
                                   handleSavePrice(product.id, product.price_per_kg)
                                 }
                                 className="inline-flex items-center gap-1 rounded-lg bg-brand-green px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-dark disabled:opacity-50"
                               >
-                                {savedId === productIdStr ? (
+                                {savedId === product.id ? (
                                   <>
                                     <Check className="h-3.5 w-3.5" /> Saved
                                   </>
@@ -589,7 +591,7 @@ export default function AdminPage() {
                           <td className="py-3 px-4">
                             <button
                               type="button"
-                              disabled={savingId === productIdStr}
+                              disabled={savingId === product.id}
                               onClick={() =>
                                 handleToggleStock(product.id, product.in_stock)
                               }

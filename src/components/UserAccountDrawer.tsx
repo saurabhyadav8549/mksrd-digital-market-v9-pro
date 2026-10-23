@@ -175,7 +175,7 @@ export function UserAccountDrawer() {
                   Login or Create Account
                 </h3>
                 <p className="text-xs text-gray-500 mt-1">
-                  Enter your 10-digit mobile number. If registered, your account and past orders load instantly!
+                  Enter your 10-digit mobile number to view your live order status, past order history, and saved delivery address.
                 </p>
               </div>
 
@@ -294,7 +294,7 @@ export function UserAccountDrawer() {
                   Complete Your Profile
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Save your name and delivery address once—it will be permanently linked to this mobile number!
+                  Save your name and delivery address once—it will auto-fill every time you order!
                 </p>
               </div>
 
@@ -413,7 +413,7 @@ export function UserAccountDrawer() {
                     My Orders & Live Status ({userOrders.length})
                   </h3>
                   <p className="text-[11px] text-gray-500">
-                    Your complete order history linked to your mobile number
+                    Each order shows its Order ID for front-page tracking too
                   </p>
                 </div>
                 <button
@@ -431,7 +431,7 @@ export function UserAccountDrawer() {
                   <Receipt className="mx-auto h-9 w-9 text-gray-300 mb-2" />
                   <p className="text-sm font-bold text-gray-800">No Orders Found Yet</p>
                   <p className="text-xs text-gray-500 mt-1">
-                    Any order placed with mobile number <strong>{currentUser.phone}</strong> will appear here instantly.
+                    Any order placed with mobile number <strong>{currentUser.phone}</strong> will appear here with live delivery status.
                   </p>
                 </div>
               ) : (
@@ -455,6 +455,7 @@ export function UserAccountDrawer() {
                                 type="button"
                                 onClick={() => handleCopyOrderId(order.receipt_id)}
                                 className="inline-flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-600 hover:bg-gray-200"
+                                title="Copy Order ID for Front Page Tracker"
                               >
                                 {copiedId === order.receipt_id ? (
                                   <>
@@ -491,12 +492,12 @@ export function UserAccountDrawer() {
                         </div>
 
                         <div className="flex flex-wrap gap-1.5">
-                          {order.items.map((item: any, idx: number) => (
+                          {order.items.map((item, idx) => (
                             <span
                               key={idx}
                               className="inline-flex items-center rounded-lg bg-gray-50 px-2 py-1 text-[11px] font-bold text-gray-700 border border-gray-200/70"
                             >
-                              {item.product?.name || item.name || "Item"} ({formatWeight(item.weight_kg)}) - Rs. {item.total_price || item.line_total || 0}
+                              {item.name} ({formatWeight(item.weight_kg)}) - Rs. {item.line_total}
                             </span>
                           ))}
                         </div>
@@ -507,7 +508,7 @@ export function UserAccountDrawer() {
                               Grand Total
                             </span>
                             <span className="text-sm font-black text-gray-900">
-                              Rs. {Number(order.grand_total || order.total_amount || 0)}
+                              Rs. {order.grand_total}
                             </span>
                           </div>
 

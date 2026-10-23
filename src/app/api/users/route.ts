@@ -6,24 +6,25 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const phone = searchParams.get("phone");
+
   if (!phone) {
-    return NextResponse.json({ exists: false, user: null }, { status: 400 });
+    return NextResponse.json({ error: "Phone number required" }, { status: 400 });
   }
+
   const user = await getUserByPhone(phone);
-  return NextResponse.json({ exists: Boolean(user), user }, { status: 200 });
+  return NextResponse.json({ user });
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { phone, name, address } = body;
-    if (!phone || !name || !address) {
-      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    const body = (await request.json()) as { phone: string; name: string; address: string };
+    if (!body.phone || !body.name || !body.address) {
+      return NextResponse.json({ error: "Phone, name, and address are required" }, { status: 400 });
     }
-    const user = await saveUserProfile({ phone, name, address });
-    return NextResponse.json({ ok: true, user }, { status: 200 });
+    const saved = await saveUserProfile(body);
+    return NextResponse.json({ user: saved });
   } catch (error) {
-    console.error("Failed to save user:", error);
-    return NextResponse.json({ error: "Failed to save user" }, { status: 500 });
+    console.error("Error saving user profile:", error);
+    return NextResponse.json({ error: "Failed to save user profile" }, { status: 400 });
   }
 }
