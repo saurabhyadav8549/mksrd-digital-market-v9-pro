@@ -8,6 +8,9 @@ import {
   Check,
   Search,
   Lock,
+  LogOut,
+  Eye,
+  EyeOff,
   Package,
   Bell,
   Calendar,
@@ -28,6 +31,8 @@ export default function AdminPage() {
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
 
   const [activeTab, setActiveTab] = useState<"orders" | "catalog">("orders");
@@ -44,24 +49,58 @@ export default function AdminPage() {
 
   useEffect(() => {
     try {
-      const auth = sessionStorage.getItem("mksrd_admin_auth");
+      const auth = sessionStorage.getItem("mksrd_admin_auth_v2");
       if (auth === "true") {
         setIsAuthenticated(true);
       }
     } catch {}
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (passwordInput === APP_CONFIG.admin.password) {
-      setIsAuthenticated(true);
-      setAuthError("");
-      try {
-        sessionStorage.setItem("mksrd_admin_auth", "true");
-      } catch {}
-    } else {
-      setAuthError("Incorrect Admin Password!");
+    setAuthError("");
+    setAuthLoading(true);
+
+    try {
+      const res = await fetch("/api/admin/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: passwordInput }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.ok) {
+        setIsAuthenticated(true);
+        setPasswordInput("");
+        try {
+          sessionStorage.setItem("mksrd_admin_auth_v2", "true");
+        } catch {}
+      } else {
+        setAuthError(data.error || "Incorrect Admin Password!");
+      }
+    } catch {
+      // Fallback check if API route isn't reachable yet
+      if (passwordInput === "mksrd@55555") {
+        setIsAuthenticated(true);
+        setPasswordInput("");
+        try {
+          sessionStorage.setItem("mksrd_admin_auth_v2", "true");
+        } catch {}
+      } else {
+        setAuthError("Unable to verify password. Please try again.");
+      }
+    } finally {
+      setAuthLoading(false);
     }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setPasswordInput("");
+    try {
+      sessionStorage.removeItem("mksrd_admin_auth_v2");
+    } catch {}
   };
 
   const playAlertSound = () => {
@@ -206,36 +245,51 @@ export default function AdminPage() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-        <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
+        <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl border border-slate-100">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-accent text-green-950 font-black text-2xl shadow-sm">
             <Lock className="h-7 w-7" />
           </div>
           <div className="text-center mb-6">
             <h1 className="text-xl font-black text-gray-900">Secure Admin Portal</h1>
             <p className="text-xs text-gray-500 mt-1">
-              {APP_CONFIG.brand.name}
+              {APP_CONFIG.brand.name} — Authorized Access Only
             </p>
           </div>
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
-                Admin Password
+                Admin Security PIN / Password
               </label>
-              <input
-                type="password"
-                required
-                placeholder="Enter admin password (mksrd@123)"
-                value={passwordInput}
-                onChange={(e) => setPasswordInput(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 px-3.5 py-3 text-xs font-bold focus:border-brand-green focus:outline-none"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  placeholder="Enter secret admin password"
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 px-3.5 py-3 pr-10 text-xs font-bold focus:border-brand-green focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  aria-label="Toggle password visibility"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
-            {authError && <p className="text-xs font-bold text-red-600">{authError}</p>}
+            {authError && (
+              <p className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                {authError}
+              </p>
+            )}
             <button
               type="submit"
-              className="w-full rounded-xl bg-brand-green py-3 text-xs font-extrabold text-white hover:bg-brand-dark transition shadow-md"
+              disabled={authLoading}
+              className="w-full rounded-xl bg-brand-green py-3 text-xs font-extrabold text-white hover:bg-brand-dark transition shadow-md disabled:opacity-60"
             >
-              Sign In to Dashboard
+              {authLoading ? "Verifying..." : "Unlock Seller Console"}
             </button>
             <div className="text-center pt-2">
               <Link href="/" className="text-xs font-semibold text-gray-500 hover:underline">
@@ -274,30 +328,42 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <div className="flex rounded-xl bg-slate-800 p-1 border border-slate-700">
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-xl bg-slate-800 p-1 border border-slate-700">
+              <button
+                type="button"
+                onClick={() => setActiveTab("orders")}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-extrabold transition ${
+                  activeTab === "orders"
+                    ? "bg-brand-green text-white shadow-xs"
+                    : "text-slate-300 hover:text-white"
+                }`}
+              >
+                <Package className="h-4 w-4" />
+                <span>Order Ledger ({orders.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("catalog")}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-extrabold transition ${
+                  activeTab === "catalog"
+                    ? "bg-brand-green text-white shadow-xs"
+                    : "text-slate-300 hover:text-white"
+                }`}
+              >
+                <Layers className="h-4 w-4" />
+                <span>Rate & Stock Catalog</span>
+              </button>
+            </div>
+
             <button
               type="button"
-              onClick={() => setActiveTab("orders")}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-extrabold transition ${
-                activeTab === "orders"
-                  ? "bg-brand-green text-white shadow-xs"
-                  : "text-slate-300 hover:text-white"
-              }`}
+              onClick={handleLogout}
+              title="Lock Admin Console"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-red-500/10 border border-red-500/30 px-3 py-2.5 text-xs font-bold text-red-300 hover:bg-red-500/20 transition"
             >
-              <Package className="h-4 w-4" />
-              <span>Order Ledger ({orders.length})</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("catalog")}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-extrabold transition ${
-                activeTab === "catalog"
-                  ? "bg-brand-green text-white shadow-xs"
-                  : "text-slate-300 hover:text-white"
-              }`}
-            >
-              <Layers className="h-4 w-4" />
-              <span>Rate & Stock Catalog</span>
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Lock</span>
             </button>
           </div>
         </div>
